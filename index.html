@@ -1,0 +1,63 @@
+
+function addGoal(){
+  const name=document.getElementById('goal-name').value.trim(),target=safeNum('goal-target'),saved=safeNum('goal-saved')||0,date=document.getElementById('goal-date').value,cur=document.getElementById('goal-cur').value;
+  const depId=document.getElementById('goal-dep').value||null;
+  const monthlyContrib=safeNum('goal-mc')||0;
+  if(!name||isNaN(target)){alert('Заполните название и цель');return;}
+  D.goals.push({id:Date.now(),name,target,saved,date,cur,depId,monthlyContrib});save();renderGoals();
+  ['goal-name','goal-target','goal-saved','goal-date'].forEach(id=>document.getElementById(id).value='');
+}
+
+function editGoal(id){
+  const g=D.goals.find(x=>x.id===id);if(!g)return;
+  const depOpts='<option value="">— без привязки —</option>'+D.deposits.map(d=>`<option value="${d.id}"${String(d.id)===String(g.depId)?' selected':''}>${d.bank} (${fmt(d.sum,0)} ${d.cur})</option>`).join('');
+  const html=`<div class="form-row c2">${mF('Название','name',g.name)}${mF('Цель','target',g.target,'number')}</div><div class="form-row c2">${mF('Накоплено','saved',g.saved,'number')}${mF('Дата','date',g.date,'date')}</div><div class="form-row c3">${mF('Валюта','cur',g.cur,null,['KZT','USD'])}${mF('Ежемес. взнос','mc',g.monthlyContrib||0,'number')}<div class="f"><label>ДЕПОЗИТ</label><select id="m-dep">${depOpts}</select></div></div>`;
+  openModal('РЕДАКТИРОВАТЬ ЦЕЛЬ',html,()=>{g.name=mv('name');g.target=mvf('target');g.saved=mvf('saved');g.date=mv('date');g.cur=mv('cur');g.monthlyContrib=mvf('mc')||0;g.depId=mv('dep')||null;save();renderGoals();closeModal();});
+}
+
+function delGoal(id){if(!confirm('Удалить?'))return;D.goals=D.goals.filter(x=>x.id!==id);save();renderGoals();}
+
+function updGoal(id,v){const g=D.goals.find(x=>x.id===id);if(g&&!g.depId){g.saved=parseFloat(v)||0;save();renderGoals();}}
+
+function renderGoals(){
+  const list=document.getElementById('goals-list');
+  if(!D.goals.length){list.innerHTML='<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:11px;">Цели не добавлены</div>';return;}
+  const now=new Date();
+  const m3=[];for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);m3.push(ymOf(d));}
+  const avgInc=m3.reduce((s,m)=>s+D.income.filter(i=>i.date.slice(0,7)===m).reduce((ss,i)=>ss+i.sum,0),0)/3;
+  const avgExp=m3.reduce((s,m)=>s+D.expenses.filter(e=>e.date.slice(0,7)===m).reduce((ss,e)=>ss+e.sum,0),0)/3;
+  const mSave=avgInc-avgExp;
+  list.innerHTML=D.goals.map(g=>{
+    const dep=g.depId?D.deposits.find(d=>String(d.id)===String(g.depId)):null;
+    const effectiveSaved=dep?dep.sum:g.saved;
+    const pct=g.target?(Math.min(effectiveSaved/g.target,1)*100):0,left=g.target-effectiveSaved,bc=pct>=100?'green':pct>=50?'gold':'blue',dl=g.date?daysLeft(g.date):'';
+    const mLeft=mSave>0?Math.ceil(left/mSave):null;
+    const mc=g.monthlyContrib||0;
+    const mLeftDep=dep&&mc>0?Math.ceil(left/mc):mLeft;
+    return`<div class="goal-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);">${g.name}</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:3px;">
+            ${g.date?'До: '+g.date+(dl!==''?' ('+dl+' дн.)':''):''} • ${g.cur}
+            ${mLeftDep?` • При текущем темпе: ~${mLeftDep} мес.`:''}
+            ${dep?` • Депозит: <span style="color:var(--blue);">${dep.bank}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editGoal(${g.id})">✎</button><button class="btn sm del" onclick="delGoal(${g.id})">✕</button></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">НАКОПЛЕНО</div><div style="font-size:14px;font-family:var(--mono);color:var(--green);">${fmt(effectiveSaved,0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ЦЕЛЬ</div><div style="font-size:14px;font-family:var(--mono);color:var(--gold);">${fmt(g.target,0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ОСТАЛОСЬ</div><div style="font-size:14px;font-family:var(--mono);color:var(--red);">${fmt(Math.max(left,0),0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ПРОГРЕСС</div><div style="font-size:14px;font-family:var(--mono);color:var(--text);">${fmt(pct,1)}%</div></div>
+      </div>
+      <div class="pw"><div class="pb-bar ${bc}" style="width:${pct}%"></div></div>
+      ${mc>0?`<div style="margin-top:6px;font-size:10px;font-family:var(--mono);color:var(--text3);">Ежемесячный взнос: <span style="color:var(--gold);">${fmt(mc,0)} ${g.cur}</span></div>`:''}
+      ${dep?`<div style="margin-top:8px;font-size:10px;font-family:var(--mono);color:var(--imp);padding:6px 8px;background:var(--imp-bg);border:1px solid var(--imp-bdr);">📎 Привязан к депозиту: ${dep.bank} — ${fmt(dep.sum,0)} ${dep.cur}</div>`:
+      `<div style="margin-top:10px;display:flex;gap:8px;align-items:center;"><label style="font-size:10px;font-family:var(--mono);color:var(--text3);">ОБНОВИТЬ:</label><input type="number" value="${effectiveSaved}" style="background:var(--bg5);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none;width:130px;" onchange="updGoal(${g.id},this.value)"></div>`}
+    </div>`;
+  }).join('');
+}
+
+// ENPF
