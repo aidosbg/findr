@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный финансовый дашборд v4.3</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070b12;--bg2:#0c1118;--bg3:#101720;--bg4:#151e2d;--bg5:#1a2438;
+  --border:rgba(251,188,4,0.12);--border2:rgba(251,188,4,0.25);--border3:rgba(251,188,4,0.4);
+  --gold:#fbb804;--gold2:#ffd04d;--blue:#3b8cf8;--green:#00c896;--red:#f05252;--purple:#a78bfa;--cyan:#22d3ee;--orange:#f97316;
+  --text:#eef0f4;--text2:#8a9ab5;--text3:#4a5568;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --crit:#f05252;--crit-bg:rgba(240,82,82,0.08);--crit-bdr:rgba(240,82,82,0.3);
+  --imp:#3b8cf8;--imp-bg:rgba(59,140,248,0.08);--imp-bdr:rgba(59,140,248,0.3);
+  --rtn:#4a5568;--rtn-bg:rgba(74,85,104,0.08);--rtn-bdr:rgba(74,85,104,0.2);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:24px;}
+.login-box{background:var(--bg3);border:1px solid var(--border3);padding:48px;width:360px;text-align:center;}
+.login-logo{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--gold);margin-bottom:8px;}
+.login-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:32px;font-family:var(--mono);}
+.lf{margin-bottom:16px;text-align:left;}
+.lf label{font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:1px;display:block;margin-bottom:6px;}
+.lf input{width:100%;background:var(--bg5);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;padding:10px 12px;outline:none;}
+.lf input:focus{border-color:var(--gold);}
+.login-btn{width:100%;background:var(--gold);color:#000;font-family:var(--mono);font-size:12px;font-weight:600;padding:11px;border:none;cursor:pointer;letter-spacing:2px;margin-top:8px;}
+.login-btn:hover{background:var(--gold2);}
+.login-err{color:var(--red);font-size:11px;font-family:var(--mono);margin-top:8px;display:none;}
+#app{display:none;height:100vh;flex-direction:column;}
+#app.visible{display:flex;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border2);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:48px;flex-shrink:0;}
+.t-logo{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gold);letter-spacing:2px;}
+.t-date{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.t-right{display:flex;align-items:center;gap:10px;}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.t-live{font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:1px;}
+.t-timer{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.t-btn{font-family:var(--mono);font-size:10px;color:var(--text3);cursor:pointer;border:1px solid var(--border);padding:3px 10px;background:none;}
+.t-btn:hover{color:var(--gold);border-color:var(--gold);}
+.nav{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{padding:10px 14px;font-size:11px;font-family:var(--mono);color:var(--text3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;white-space:nowrap;letter-spacing:.5px;transition:all .15s;}
+.nav-btn:hover{color:var(--text2);}
+.nav-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+.nav-btn.crit{color:var(--crit)!important;}
+.nav-btn.crit.active{border-bottom-color:var(--crit)!important;}
+.main{flex:1;overflow-y:auto;padding:20px;}
+.section{display:none;min-height:200px;}
+.section.active{display:block;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:20px;}
+.kpi{background:var(--bg3);border:1px solid var(--border);padding:14px 16px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.crit{border-color:var(--crit-bdr);background:linear-gradient(180deg,var(--crit-bg),var(--bg3));}
+.kpi.crit::before{background:var(--crit);}
+.kpi.imp{border-color:var(--imp-bdr);}
+.kpi.imp::before{background:var(--imp);}
+.kpi.pos-k::before{background:linear-gradient(90deg,var(--gold),transparent);}
+.kpi.rtn{opacity:.8;}
+.kpi.rtn::before{background:var(--rtn);}
+.kpi-label{font-size:9px;font-family:var(--mono);color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
+.kpi-val{font-size:20px;font-family:var(--mono);font-weight:500;line-height:1;}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.green{color:var(--green);}
+.kpi-val.red{color:var(--red);}
+.kpi-val.blue{color:var(--blue);}
+.kpi-sub{font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:4px;}
+.kpi-upd{font-size:9px;font-family:var(--mono);color:var(--text3);margin-top:3px;opacity:.55;}
+.panel{background:var(--bg3);border:1px solid var(--border);margin-bottom:16px;}
+.panel.crit{border-color:var(--crit-bdr);}
+.panel.imp{border-color:var(--imp-bdr);}
+.ph{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.pt{font-size:10px;font-family:var(--mono);color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;}
+.pt.crit{color:var(--crit);}
+.pt.imp{color:var(--imp);}
+.pb{padding:14px;}
+.two-c{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.three-c{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.tbl-w{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);}
+thead tr{background:var(--bg5);border-bottom:1px solid var(--border2);}
+th{padding:8px 10px;text-align:left;color:var(--gold);font-size:10px;letter-spacing:1px;font-weight:500;white-space:nowrap;}
+th.r{text-align:right;}
+td{padding:7px 10px;color:var(--text2);border-bottom:1px solid rgba(251,188,4,0.05);white-space:nowrap;vertical-align:middle;}
+td.r{text-align:right;}
+td.pos{color:var(--green);}
+td.neg{color:var(--red);}
+td.nm{color:var(--text);font-weight:500;}
+td.tk{color:var(--gold2);}
+tbody tr:hover{background:rgba(251,188,4,0.03);}
+tr.rc{background:rgba(240,82,82,0.05)!important;}
+tr.ri{background:rgba(59,140,248,0.04)!important;}
+tr.rr td{color:var(--text3);}
+.empty{text-align:center;padding:28px;color:var(--text3);font-size:11px;}
+.grp-row td{background:var(--bg4);color:var(--gold);font-weight:600;font-size:11px;letter-spacing:1px;padding:6px 10px;}
+.form-row{display:grid;gap:10px;margin-bottom:12px;}
+.c2{grid-template-columns:1fr 1fr;}
+.c3{grid-template-columns:1fr 1fr 1fr;}
+.c4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.f{display:flex;flex-direction:column;gap:4px;}
+.f label{font-size:9px;font-family:var(--mono);color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+.f input,.f select{background:var(--bg5);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;width:100%;}
+.f input:focus,.f select:focus{border-color:var(--gold);}
+.f select option{background:var(--bg4);}
+.btn{background:var(--gold);color:#000;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;letter-spacing:1px;}
+.btn:hover{background:var(--gold2);}
+.btn.sm{padding:3px 8px;font-size:10px;}
+.btn.del{background:none;border:1px solid var(--crit-bdr);color:var(--red);}
+.btn.del:hover{background:var(--crit-bg);}
+.btn.edit{background:none;border:1px solid var(--border2);color:var(--text2);}
+.btn.edit:hover{border-color:var(--gold);color:var(--gold);}
+.btn.blue-b{background:var(--blue);color:#fff;}
+.btn.grn{background:var(--green);color:#000;}
+.num-input{background:var(--bg5);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;width:100%;text-align:left;}
+.num-input:focus{border-color:var(--gold);}
+.num-input.error{border-color:var(--red);}
+.btn.grn:hover{background:#00e6a8;}
+.pw{background:var(--bg5);height:7px;overflow:hidden;margin:4px 0;}
+.pb-bar{height:100%;transition:width .4s;}
+.pb-bar.gold{background:linear-gradient(90deg,var(--gold),var(--gold2));}
+.pb-bar.green{background:linear-gradient(90deg,#00c896,#34d399);}
+.pb-bar.blue{background:linear-gradient(90deg,var(--blue),var(--cyan));}
+.pb-bar.red{background:linear-gradient(90deg,var(--red),#f87171);}
+.badge{display:inline-block;padding:2px 7px;font-size:9px;font-family:var(--mono);letter-spacing:1px;}
+.badge.green{background:rgba(0,200,150,0.15);color:var(--green);border:1px solid rgba(0,200,150,0.3);}
+.badge.red{background:var(--crit-bg);color:var(--red);border:1px solid var(--crit-bdr);}
+.badge.gold{background:rgba(251,188,4,0.15);color:var(--gold);border:1px solid rgba(251,188,4,0.3);}
+.badge.blue{background:var(--imp-bg);color:var(--blue);border:1px solid var(--imp-bdr);}
+.badge.grey{background:var(--rtn-bg);color:var(--text3);border:1px solid var(--rtn-bdr);}
+.anom-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;margin-bottom:6px;border-left:3px solid transparent;}
+.anom-item.up{border-left-color:var(--red);background:var(--crit-bg);}
+.anom-item.dn{border-left-color:var(--green);background:rgba(0,200,150,0.07);}
+.ins-block{background:var(--bg4);border:1px solid var(--border2);padding:14px;margin-bottom:10px;}
+.ins-title{font-size:10px;font-family:var(--mono);color:var(--gold);letter-spacing:1px;margin-bottom:8px;}
+.ins-text{font-size:12px;color:var(--text2);line-height:1.7;}
+.ins-text span.pos{color:var(--green);}
+.ins-text span.neg{color:var(--red);}
+.ins-text span.gold{color:var(--gold);}
+.sort-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.st{font-family:var(--mono);font-size:10px;padding:4px 10px;cursor:pointer;border:1px solid var(--border2);color:var(--text3);background:none;letter-spacing:.5px;}
+.st.active{border-color:var(--gold);color:var(--gold);background:rgba(251,188,4,0.08);}
+.sec-t{font-size:10px;font-family:var(--mono);color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.goal-card{background:var(--bg4);border:1px solid var(--border);padding:14px;margin-bottom:10px;}
+.rem-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:6px;border-left:3px solid transparent;}
+.rem-item.rc{border-left-color:var(--red);background:var(--crit-bg);}
+.rem-item.rw{border-left-color:var(--gold);background:rgba(251,188,4,0.06);}
+.rem-item.rok{border-left-color:var(--green);background:rgba(0,200,150,0.05);}
+.sub-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.sub-item:last-child{border-bottom:none;}
+.enp-g{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.enp-s{background:var(--bg4);border:1px solid var(--border);padding:14px;margin-bottom:10px;}
+.enp-l{font-size:9px;font-family:var(--mono);color:var(--text3);letter-spacing:1px;margin-bottom:6px;}
+.enp-v{font-size:22px;font-family:var(--mono);font-weight:500;color:var(--gold);}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--bg3);border:1px solid var(--border3);padding:24px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal-t{font-family:var(--mono);font-size:12px;color:var(--gold);letter-spacing:2px;margin-bottom:20px;text-transform:uppercase;}
+.modal-a{display:flex;gap:10px;margin-top:16px;}
+.car-card{background:var(--bg4);border:1px solid var(--imp-bdr);padding:16px;margin-bottom:16px;}
+.debt-tab{padding:10px 18px;font-size:11px;font-family:var(--mono);color:var(--text3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;letter-spacing:.5px;transition:all .15s;}
+.debt-tab:hover{color:var(--text2);}
+.debt-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.debt-pane{display:none;}
+.debt-pane.active{display:block;}
+.acc-card{background:var(--bg4);border:1px solid var(--border);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.car-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.car-title{font-size:15px;font-weight:600;color:var(--blue);}
+.car-meta{font-size:10px;font-family:var(--mono);color:var(--text3);}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">FINANCE TERMINAL</div>
+    <div class="login-title">Личный дашборд</div>
+    <div class="lf"><label>Пароль</label><input type="password" id="pwd-input" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-err" id="login-err">Неверный пароль</div>
+    <button class="login-btn" onclick="doLogin()">ВОЙТИ</button>
+  </div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="t-logo">⬡ FINANCE TERMINAL <span style="font-size:9px;color:var(--text3);margin-left:6px;">v4.3</span></div>
+      <div class="t-date" id="t-date" style="color:var(--gold2);font-size:12px;font-weight:500;letter-spacing:0.5px;border-left:2px solid var(--gold);padding-left:10px;"></div>
+    </div>
+    <div class="t-right">
+      <div class="t-timer" id="t-timer"></div>
+      <div class="live-dot"></div><div class="t-live">LIVE</div>
+      <button class="t-btn" onclick="exportData()">ЭКСПОРТ</button>
+      <label class="t-btn" style="cursor:pointer;">ИМПОРТ<input type="file" accept=".json" onchange="importData(event)" style="display:none;"></label>
+      <button class="t-btn" onclick="openSettings()">КУРС USD</button>
+      <button class="t-btn" onclick="resetAllData()" style="color:var(--red);border-color:var(--crit-bdr);">СБРОСИТЬ</button>
+      <button class="t-btn" onclick="logout()">ВЫХОД</button>
+    </div>
+  </div>
+  <div class="nav" id="main-nav">
+    <button class="nav-btn active" onclick="showSection('dashboard',this)">ДАШБОРД</button>
+    <button class="nav-btn" onclick="showSection('invest',this)">ИНВЕСТИЦИИ</button>
+    <button class="nav-btn" onclick="showSection('deposits',this)">ДЕПОЗИТЫ</button>
+    <button class="nav-btn" onclick="showSection('assets',this)">АКТИВЫ</button>
+    <button class="nav-btn" onclick="showSection('income',this)">ДОХОДЫ</button>
+    <button class="nav-btn" onclick="showSection('expenses',this)">РАСХОДЫ</button>
+    <button class="nav-btn" onclick="showSection('rent',this)">АРЕНДА</button>
+    <button class="nav-btn" onclick="showSection('goals',this)">ЦЕЛИ</button>
+    <button class="nav-btn" onclick="showSection('enpf',this)">ЕНПФ</button>
+    <button class="nav-btn" onclick="showSection('insurance',this)">СТРАХОВКИ</button>
+    <button class="nav-btn" onclick="showSection('subs',this)">ПОДПИСКИ</button>
+    <button class="nav-btn" onclick="showSection('property',this)">НЕДВИЖИМОСТЬ</button>
+    <button class="nav-btn" onclick="showSection('garage',this)">ГАРАЖ</button>
+    <button class="nav-btn" onclick="showSection('accounts',this)">СЧЕТА</button>
+    <button class="nav-btn" onclick="showSection('debts',this)">ДОЛГИ</button>
+    <button class="nav-btn" onclick="showSection('reminders',this)">НАПОМИНАНИЯ</button>
+  </div>
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div id="s-dashboard" class="section active">
+      <div id="dash-insight" style="margin-bottom:16px;"></div>
+      <div class="kpi-grid" id="dash-kpis"></div>
+      <div class="two-c">
+        <div class="panel imp"><div class="ph"><div class="pt imp">ДОХОДНЫЕ АКТИВЫ</div></div><div class="pb"><div style="position:relative;height:190px;"><canvas id="c-assets"></canvas></div><div id="l-assets" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">ДОХОДЫ VS РАСХОДЫ (6 мес)</div></div><div class="pb"><div style="position:relative;height:190px;"><canvas id="c-inout"></canvas></div><div id="inout-legend" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;font-size:10px;font-family:var(--mono);"></div></div></div>
+      </div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДИНАМИКА ЧИСТОГО КАПИТАЛА</div></div><div class="pb"><div style="position:relative;height:130px;"><canvas id="c-networth"></canvas></div></div></div>
+      <div class="panel crit" id="dash-rem-panel"><div class="ph"><div class="pt crit">⚠ СРОЧНЫЕ НАПОМИНАНИЯ</div></div><div class="pb" id="dash-reminders"></div></div>
+    </div>
+    <!-- INVESTMENTS -->
+    <div id="s-invest" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ПОЗИЦИЮ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Наименование</label><input type="text" id="i-name" placeholder="Apple Inc."></div><div class="f"><label>Тикер</label><input type="text" id="i-ticker" placeholder="AAPL"></div><div class="f"><label>Дата покупки</label><input type="date" id="i-date"></div></div>
+        <div class="form-row c4"><div class="f"><label>Количество</label><input type="number" id="i-qty" step="any"></div><div class="f"><label>Цена покупки</label><input type="number" id="i-price" step="any"></div><div class="f"><label>Текущая цена</label><input type="number" id="i-cur" step="any"></div><div class="f"><label>Валюта</label><select id="i-currency"><option>USD</option><option>KZT</option><option>RUB</option><option>EUR</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Заметки</label><input type="text" id="i-notes"></div><div class="f"><label>Тип приобретения</label><select id="i-source"><option value="purchased">Куплено</option><option value="cashback">Кэшбэк / Награда</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addInvest()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">ОБНОВИТЬ ТЕКУЩУЮ ЦЕНУ</div></div><div class="pb">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="f" style="min-width:150px;"><label>Тикер</label><select id="i-upd-t"></select></div>
+          <div class="f" style="min-width:140px;"><label>Новая цена</label><input type="number" id="i-upd-p" step="any"></div>
+          <button class="btn" onclick="updateInvestPrice()">ОБНОВИТЬ</button>
+        </div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ПОРТФЕЛЬ</div><div style="display:flex;gap:8px;"><button class="btn sm edit" id="inv-view-btn" onclick="toggleInvView()">▼ ГРУППИРОВАТЬ</button></div></div><div class="pb">
+        <div id="invest-grouped" style="display:none;margin-bottom:10px;"></div>
+          <div id="invest-flat"><div class="tbl-w"><table><thead><tr><th>НАИМЕНОВАНИЕ</th><th>ТИКЕР</th><th>ДАТА</th><th class="r">КОЛ-ВО</th><th class="r">ЦЕНА ПОКУПКИ</th><th class="r">ВЛОЖЕНО</th><th class="r">ТЕК. ЦЕНА</th><th class="r">ТЕК. СТОИМ.</th><th class="r">П/У</th><th class="r">П/У%</th><th class="r">ДОЛЯ%</th><th>ВАЛЮТА</th><th>ЗАМЕТКИ</th><th>ДЕЙСТВИЯ</th></tr></thead>
+        <tbody id="invest-tbody"><tr><td colspan="14" class="empty">Портфель пуст</td></tr></tbody></table></div></div>
+      </div></div>
+      <div id="reward-panel" style="display:none;margin-bottom:16px;"><div class="panel imp"><div class="ph"><div class="pt imp">КЭШБЭК / НАГРАДНЫЕ АКТИВЫ</div></div><div class="pb"><div id="reward-summary"></div></div></div></div>
+      <div class="two-c">
+        <div class="panel imp"><div class="ph"><div class="pt imp">РАСПРЕДЕЛЕНИЕ ПО СТОИМОСТИ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-pie-val"></canvas></div><div id="l-pie-val" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">РАСПРЕДЕЛЕНИЕ ПО КОЛИЧЕСТВУ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-pie-qty"></canvas></div><div id="l-pie-qty" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+      </div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДИНАМИКА ПОРТФЕЛЯ</div></div><div class="pb"><div style="position:relative;height:140px;"><canvas id="c-line"></canvas></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">ДИВИДЕНДЫ ПО ГОДАМ</div></div><div class="pb"><div style="position:relative;height:140px;"><canvas id="c-div"></canvas></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">ДИВИДЕНДЫ</div></div><div class="pb">
+        <div class="form-row c3" style="margin-bottom:10px;">
+          <div class="f"><label>Тикер</label><select id="d-t"></select></div>
+          <div class="f"><label>Дата выплаты</label><input type="date" id="d-date"></div>
+          <div class="f"><label>Дивиденд на акцию</label><input type="text" id="d-amt" inputmode="decimal"></div>
+        </div>
+        <div class="form-row c3" style="margin-bottom:10px;">
+          <div class="f"><label>Eligible акций (до экс-даты)</label><input type="text" id="d-eligible" inputmode="decimal"></div>
+          <div class="f"><label>Ручная сумма (от брокера)</label><input type="text" id="d-override" inputmode="decimal" placeholder="Необязательно"></div>
+          <div class="f"><div style="font-size:10px;font-family:var(--mono);color:var(--text3);padding-top:20px;">Ручная сумма приоритетнее расчётной</div></div>
+        </div>
+        <button class="btn" onclick="addDiv()" style="margin-bottom:16px;">+ ДОБАВИТЬ ДИВИДЕНД</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div><div class="sec-t">ИСТОРИЯ</div><div class="tbl-w"><table><thead><tr><th>ТИКЕР</th><th>ДАТА</th><th class="r">НА АКЦИЮ</th><th class="r">КОЛ-ВО</th><th class="r">ИТОГО</th><th></th></tr></thead><tbody id="div-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div></div>
+          <div><div class="sec-t">ПО ТИКЕРАМ</div><div class="tbl-w"><table><thead><tr><th>ТИКЕР</th><th class="r">ИТОГО</th></tr></thead><tbody id="div-sum-tbody"><tr><td colspan="2" class="empty">—</td></tr></tbody></table></div></div>
+        </div>
+      </div></div>
+    </div>
+    <!-- DEPOSITS -->
+    <div id="s-deposits" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ДЕПОЗИТ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Банк</label><input type="text" id="dep-bank" placeholder="АО «Отбасы банк»"></div><div class="f"><label>Тип</label><select id="dep-type" onchange="toggleOtbasy()"><option value="fixed">Срочный</option><option value="saving">Накопительный</option><option value="otbasy">Жилищно-накопительный</option></select></div><div class="f"><label>Сумма</label><input type="number" id="dep-sum" step="any"></div></div>
+        <div class="form-row c3"><div class="f"><label>Ставка % годовых</label><input type="number" id="dep-rate" step="any"></div><div class="f"><label>Дата открытия</label><input type="date" id="dep-start"></div><div class="f"><label>Дата окончания</label><input type="date" id="dep-end"></div></div>
+        <div class="form-row c2"><div class="f"><label>Валюта</label><select id="dep-cur"><option>KZT</option><option>USD</option><option>EUR</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addDeposit()">+ ДОБАВИТЬ</button></div></div>
+        <div class="form-row c3" id="otbasy-wrap" style="display:none;background:var(--imp-bg);padding:10px;border:1px solid var(--imp-bdr);">
+          <div class="f"><label>Гос. премия % (годовых)</label><input type="number" id="dep-gov-rate" value="20" step="any"></div>
+          <div class="f"><label>Лимит премии (доля, напр. 0.10)</label><input type="number" id="dep-gov-limit" value="0.10" step="0.01"></div>
+          <div class="f"><label>Дата начисления премии</label><input type="date" id="dep-bonus-date"></div>
+        </div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">МОИ ДЕПОЗИТЫ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>БАНК</th><th>ТИП</th><th>ВАЛЮТА</th><th class="r">СУММА</th><th class="r">СТАВКА</th><th>СРОК</th><th class="r">ДОХОД ЗА ПЕРИОД</th><th class="r">ДОХОД / МЕС</th><th class="r" style="color:var(--cyan);">ГОС. ПРЕМИЯ</th><th class="r">ДНЕЙ ОСТАЛОСЬ</th><th>ОБНОВЛЕНО</th><th>ДЕЙСТВИЯ</th></tr></thead>
+        <tbody id="dep-tbody"><tr><td colspan="12" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+
+    <!-- ASSETS -->
+    <div id="s-assets" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ АКТИВ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Название</label><input type="text" id="ast-name" placeholder="Квартира, ул. Абая 10"></div><div class="f"><label>Тип актива</label><select id="ast-type"><option>Недвижимость</option><option>Автомобиль</option><option>Земля</option><option>Бизнес</option><option>Прочее</option></select></div><div class="f"><label>Категория</label><select id="ast-cat"><option value="income">Доходный</option><option value="base">Базовый</option></select></div></div>
+        <div class="form-row c3"><div class="f"><label>Цена покупки</label><input type="number" id="ast-buy" step="any"></div><div class="f"><label>Год покупки</label><input type="number" id="ast-year" placeholder="2020"></div><div class="f"><label>Валюта</label><select id="ast-cur2"><option>KZT</option><option>USD</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Статус</label><select id="ast-status"><option>Владею</option><option>Сдаю в аренду</option><option>Продаю</option><option>Продан</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addAsset()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОХОДНЫЕ АКТИВЫ</div></div><div class="pb"><div class="tbl-w"><table><thead><tr><th>НАЗВАНИЕ</th><th>ТИП</th><th class="r">КУПЛЕНО ЗА</th><th class="r">ПРОДАНО ЗА</th><th class="r">ПРИБЫЛЬ</th><th>ГОД</th><th>СТАТУС</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ast-inc-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">БАЗОВЫЕ АКТИВЫ</div></div><div class="pb"><div class="tbl-w"><table><thead><tr><th>НАЗВАНИЕ</th><th>ТИП</th><th class="r">КУПЛЕНО ЗА</th><th class="r">ПРОДАНО ЗА</th><th class="r">ПРИБЫЛЬ</th><th>ГОД</th><th>СТАТУС</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ast-base-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div></div></div>
+    </div>
+    <!-- INCOME -->
+    <div id="s-income" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ДОХОД</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Тип</label><select id="inc-type"><option>Зарплата</option><option>ИП</option><option>Аренда</option><option>Дивиденды</option><option>Прочее</option></select></div><div class="f"><label>Сумма</label><input type="number" id="inc-sum" step="any"></div><div class="f"><label>Дата</label><input type="date" id="inc-date"></div><div class="f"><label>Валюта</label><select id="inc-cur"><option>KZT</option><option>USD</option><option>RUB</option></select></div></div>
+        <div class="form-row c3">
+          <div class="f"><label>Описание</label><input type="text" id="inc-desc" placeholder="Зарплата за май, аванс"></div>
+          <div class="f"><label>Направить на депозит (необязательно)</label><select id="inc-dep-link"><option value="">— не направлять —</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addIncome()">+ ДОБАВИТЬ</button></div>
+        </div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">ИСТОРИЯ ДОХОДОВ</div></div><div class="pb">
+        <div class="sort-tabs"><button class="st active" onclick="sortIncome('date',this)">ПО ДАТЕ</button><button class="st" onclick="sortIncome('type',this)">ПО ТИПУ</button><button class="st" onclick="sortIncome('amount',this)">ПО СУММЕ</button><button class="st" onclick="sortIncome('month',this)">ПО МЕСЯЦУ</button></div>
+        <div class="tbl-w"><table><thead><tr><th>ТИП</th><th>ОПИСАНИЕ</th><th class="r">СУММА</th><th>ДАТА</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="inc-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- EXPENSES -->
+    <div id="s-expenses" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ РАСХОД</div></div><div class="pb">
+        <div class="form-row c4">
+          <div class="f"><label>Категория</label><select id="exp-cat" onchange="updateSubcat()"><option>Продукты</option><option>Коммунальные</option><option value="Личный транспорт">Личный транспорт</option><option>Рестораны</option><option>Одежда</option><option>Здоровье</option><option>Образование</option><option>Развлечения</option><option>Дети</option><option>Путешествия</option><option>Связь</option><option>Разное</option></select></div>
+          <div class="f" id="subcat-wrap" style="display:none;"><label>Подкатегория</label><select id="exp-subcat"><option>Бензин</option><option>Мойка</option><option>Техобслуживание</option><option>Запчасти</option><option>Штрафы</option><option>Парковка</option><option>Прочее</option></select></div>
+          <div class="f"><label>Сумма</label><input type="number" id="exp-sum" step="any"></div>
+          <div class="f"><label>Дата</label><input type="date" id="exp-date"></div>
+          <div class="f"><label>Валюта</label><select id="exp-cur"><option>KZT</option><option>USD</option></select></div>
+        </div>
+        <div class="form-row c2"><div class="f"><label>Описание</label><input type="text" id="exp-desc"></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addExpense()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel crit"><div class="ph"><div class="pt crit">⚠ АНОМАЛИИ В РАСХОДАХ</div></div><div class="pb" id="anom-body"><div class="empty">Недостаточно данных</div></div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">АНАЛИЗ: МЕСЯЦ К МЕСЯЦУ</div></div><div class="pb" id="mtm-body"><div class="empty">—</div></div></div>
+      <div class="two-c">
+        <div class="panel"><div class="ph"><div class="pt">ПО КАТЕГОРИЯМ (этот месяц)</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-exp-pie"></canvas></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">РАСХОДЫ ПО МЕСЯЦАМ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-exp-bar"></canvas></div></div></div>
+      </div>
+      <div class="panel"><div class="ph"><div class="pt">ИСТОРИЯ РАСХОДОВ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>КАТЕГОРИЯ</th><th>ПОДКАТЕГОРИЯ</th><th>ОПИСАНИЕ</th><th class="r">СУММА</th><th>ДАТА</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="exp-tbody"><tr><td colspan="7" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- RENT -->
+    <div id="s-rent" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ОБЪЕКТ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Адрес</label><input type="text" id="rent-addr"></div><div class="f"><label>Арендатор</label><input type="text" id="rent-tenant"></div><div class="f"><label>Аренда / месяц</label><input type="number" id="rent-sum" step="any"></div></div>
+        <div class="form-row c3"><div class="f"><label>Дата начала</label><input type="date" id="rent-start"></div><div class="f"><label>Дата окончания</label><input type="date" id="rent-end"></div><div class="f"><label>Валюта</label><select id="rent-cur"><option>KZT</option><option>USD</option></select></div>
+          <div class="f"><label>Объект недвижимости</label><select id="rent-prop-link"><option value="">— без привязки —</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addRent()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">МОИ ОБЪЕКТЫ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>АДРЕС</th><th>АРЕНДАТОР</th><th class="r">АРЕНДА/МЕС</th><th>НАЧАЛО</th><th>ОКОНЧАНИЕ</th><th class="r">ОСТАЛОСЬ ДНЕЙ</th><th>ВАЛЮТА</th><th>ОБЪЕКТ</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="rent-tbody"><tr><td colspan="8" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- GOALS -->
+    <div id="s-goals" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ЦЕЛЬ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Название</label><input type="text" id="goal-name" placeholder="Купить квартиру"></div><div class="f"><label>Целевая сумма</label><input type="number" id="goal-target" step="any"></div><div class="f"><label>Накоплено</label><input type="number" id="goal-saved" step="any"></div><div class="f"><label>Дата цели</label><input type="date" id="goal-date"></div></div>
+        <div class="form-row c4"><div class="f"><label>Валюта</label><select id="goal-cur"><option>KZT</option><option>USD</option></select></div><div class="f"><label>Ежемес. взнос</label><input type="number" id="goal-mc" step="any" placeholder="50000"></div><div class="f"><label>Привязать к депозиту</label><select id="goal-dep"><option value="">— без привязки —</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addGoal()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div id="goals-list"></div>
+    </div>
+    <!-- ENPF -->
+    <div id="s-enpf" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ЕНПФ — ПЕНСИОННЫЕ НАКОПЛЕНИЯ</div></div><div class="pb">
+        <div class="enp-g">
+          <div>
+            <div class="form-row c2"><div class="f"><label>Текущий остаток (тг)</label><input type="number" id="enpf-bal" step="any"></div><div class="f"><label>Порог снятия (тг)</label><input type="number" id="enpf-thr" step="any"></div></div>
+            <div class="form-row c2"><div class="f"><label>Дата обновления</label><input type="date" id="enpf-date"></div><div class="f"><label>Примечание</label><input type="text" id="enpf-note"></div></div>
+            <button class="btn" onclick="saveEnpf()">СОХРАНИТЬ</button>
+          </div>
+          <div id="enpf-stats"></div>
+        </div>
+        <div style="margin-top:20px;"><div class="sec-t">ИСТОРИЯ</div>
+          <div class="tbl-w"><table><thead><tr><th>ДАТА</th><th class="r">ОСТАТОК</th><th class="r">ПОРОГ</th><th class="r">ДО ПОРОГА</th><th>ПРИМЕЧАНИЕ</th><th></th></tr></thead><tbody id="enpf-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+        </div>
+      </div></div>
+    </div>
+    <!-- INSURANCE -->
+    <div id="s-insurance" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ СТРАХОВКУ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Тип страховки</label><select id="ins-type" onchange="toggleInsObj()"><option>КАСКО</option><option>ОГПО</option><option>Имущество</option><option>Жизнь</option><option>Здоровье</option><option>Другое</option></select></div>
+          <div class="f"><label>Страховая компания</label><input type="text" id="ins-comp" placeholder="Nomad Insurance"></div>
+          <div class="f"><label>Привязать к автомобилю</label><select id="ins-car-link"><option value="">— не авто —</option></select></div>
+        </div>
+        <div class="form-row c3">
+          <div class="f"><label>Объект (если не авто)</label><input type="text" id="ins-obj" placeholder="Квартира ул. Абая 10"></div>
+          <div class="f"><label>Сумма покрытия</label><input type="number" id="ins-cover" step="any"></div>
+          <div class="f"><label>Стоимость страховки</label><input type="number" id="ins-prem" step="any"></div>
+        </div>
+        <div class="form-row c2">
+          <div class="f"><label>Дата начала</label><input type="date" id="ins-start"></div>
+          <div class="f"><label>Дата окончания</label><input type="date" id="ins-end"></div>
+        </div>
+        <button class="btn" onclick="addInsurance()">+ ДОБАВИТЬ</button>
+      </div></div>
+      <div class="panel" id="ins-tbl-panel"><div class="ph"><div class="pt">МОИ СТРАХОВКИ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>ОБЪЕКТ</th><th>ТИП</th><th>КОМПАНИЯ</th><th>НАЧАЛО</th><th>ОКОНЧАНИЕ</th><th class="r">ПОКРЫТИЕ</th><th class="r">СТОИМОСТЬ</th><th>СТАТУС</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ins-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- SUBS -->
+    <div id="s-subs" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ПОДПИСКУ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Название</label><input type="text" id="sub-name" placeholder="Netflix"></div><div class="f"><label>Сумма/мес</label><input type="number" id="sub-sum" step="any"></div><div class="f"><label>День списания</label><input type="number" id="sub-day" min="1" max="31"></div><div class="f"><label>Валюта</label><select id="sub-cur"><option>KZT</option><option>USD</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Категория</label><select id="sub-cat"><option>Развлечения</option><option>Связь</option><option>Работа</option><option>Здоровье</option><option>Другое</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addSub()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">МОИ ПОДПИСКИ</div></div><div class="pb"><div id="sub-list"><div class="empty">—</div></div><div id="sub-total" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--text2);"></div></div></div>
+    </div>
+    <!-- PROPERTY -->
+    <div id="s-property" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОБАВИТЬ ОБЪЕКТ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Название / адрес</label><input type="text" id="prop-name" placeholder="Квартира, ул. Абая 10"></div>
+          <div class="f"><label>Тип</label><select id="prop-type"><option>Квартира</option><option>Дом</option><option>Земля</option><option>Коммерческий</option><option>Другое</option></select></div>
+          <div class="f"><label>Статус</label><select id="prop-status"><option>Проживаю</option><option>Сдаю в аренду</option><option>Пустует</option><option>Продаётся</option></select></div>
+        </div>
+        <div class="form-row c3">
+          <div class="f"><label>Площадь (кв.м)</label><input type="number" id="prop-area" step="any"></div>
+          <div class="f"><label>Стоимость (тг)</label><input type="number" id="prop-value" step="any"></div>
+          <div class="f"><label>Год покупки</label><input type="number" id="prop-year" placeholder="2020"></div>
+        </div>
+        <div class="form-row c2">
+          <div class="f"><label>Заметки</label><input type="text" id="prop-notes"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addProperty()">+ ДОБАВИТЬ ОБЪЕКТ</button></div>
+        </div>
+      </div></div>
+
+      <div id="property-list"></div>
+
+      <!-- ADD UTILITY EXPENSE -->
+      <div class="panel" id="add-util-panel" style="display:none;">
+        <div class="ph"><div class="pt" id="add-util-title">ДОБАВИТЬ РАСХОД ПО ОБЪЕКТУ</div></div>
+        <div class="pb">
+          <div class="form-row c4">
+            <div class="f"><label>Категория</label><select id="util-cat">
+              <option>Коммунальные</option><option>Электричество</option><option>Вода</option>
+              <option>Газ</option><option>Интернет</option><option>Ремонт</option>
+              <option>Налог</option><option>Управление домом</option><option>Прочее</option>
+            </select></div>
+            <div class="f"><label>Сумма (тг)</label><input type="number" id="util-sum" step="any"></div>
+            <div class="f"><label>Дата</label><input type="date" id="util-date"></div>
+            <div class="f"><label>Период (месяц)</label><input type="month" id="util-period"></div>
+          </div>
+          <div class="form-row c2">
+            <div class="f"><label>Описание</label><input type="text" id="util-desc" placeholder="Квитанция за январь"></div>
+            <div style="display:flex;align-items:flex-end;gap:10px;">
+              <button class="btn" onclick="addUtility()">+ ДОБАВИТЬ</button>
+              <button class="btn edit" onclick="closeAddUtil()">ОТМЕНА</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- GARAGE -->
+    <div id="s-garage" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОБАВИТЬ АВТОМОБИЛЬ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Марка</label><input type="text" id="car-make" placeholder="Toyota"></div><div class="f"><label>Модель</label><input type="text" id="car-model" placeholder="Camry"></div><div class="f"><label>Год</label><input type="number" id="car-year" placeholder="2020"></div><div class="f"><label>Пробег (км)</label><input type="number" id="car-mileage" step="any"></div></div>
+        <div class="form-row c2"><div class="f"><label>Гос. номер</label><input type="text" id="car-plate" placeholder="123 ABC 01"></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addCar()">+ ДОБАВИТЬ АВТО</button></div></div>
+      </div></div>
+      <div id="garage-list"></div>
+      <div class="panel" id="add-part-panel" style="display:none;"><div class="ph"><div class="pt" id="add-part-title">ДОБАВИТЬ ЗАПИСЬ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Название работы / запчасти</label><input type="text" id="part-name" placeholder="Замена масла"></div><div class="f"><label>Номер запчасти</label><input type="text" id="part-number" placeholder="4351220130"></div><div class="f"><label>Категория</label><select id="part-cat"><option>Масло и фильтры</option><option>Тормозная система</option><option>Подвеска</option><option>Двигатель</option><option>Трансмиссия</option><option>Кузов</option><option>Электрика</option><option>Шины</option><option>ТО</option><option>Налог на транспорт</option><option>Прочее</option></select></div></div>
+        <div class="form-row c4"><div class="f"><label>Цена (тг)</label><input type="number" id="part-price" step="any"></div><div class="f"><label>Дата</label><input type="date" id="part-date"></div><div class="f"><label>Пробег при замене</label><input type="number" id="part-mileage" step="any"></div><div class="f"><label>Следующая замена (км)</label><input type="number" id="part-next-mil" step="any"></div></div>
+        <div class="form-row c2"><div class="f"><label>Где меняли</label><input type="text" id="part-where" placeholder="СТО Мастер / сам"></div><div class="f"><label>Следующая замена (дата)</label><input type="date" id="part-next-date"></div></div>
+        <div style="display:flex;gap:10px;"><button class="btn" onclick="addPart()">+ ДОБАВИТЬ ЗАПИСЬ</button><button class="btn edit" onclick="closeAddPart()">ОТМЕНА</button></div>
+      </div></div>
+    <!-- STO DIRECTORY -->
+    <div class="panel" id="sto-panel">
+      <div class="ph" style="cursor:pointer;" onclick="toggleStoPanel()">
+        <div class="pt">📋 СПРАВОЧНИК СТО</div>
+        <span id="sto-panel-icon" style="font-family:var(--mono);color:var(--text3);">▼ РАЗВЕРНУТЬ</span>
+      </div>
+      <div id="sto-panel-body" style="display:none;">
+        <div class="pb" style="border-top:1px solid var(--border);">
+          <div class="form-row c3" style="margin-bottom:10px;">
+            <div class="f"><label>Название СТО</label><input type="text" id="sto-name" placeholder="СТО Мастер"></div>
+            <div class="f"><label>Адрес</label><input type="text" id="sto-addr" placeholder="ул. Абая 15"></div>
+            <div class="f"><label>Телефон</label><input type="text" id="sto-phone" placeholder="+7 777 123 45 67"></div>
+          </div>
+          <div class="form-row c2" style="margin-bottom:10px;">
+            <div class="f"><label>Специализация</label><select id="sto-spec"><option>Общее ТО</option><option>Кузовной ремонт</option><option>Двигатель</option><option>Подвеска</option><option>Шины</option><option>Электрика</option><option>Другое</option></select></div>
+            <div class="f"><label>Заметки</label><input type="text" id="sto-notes" placeholder="Хороший мастер, цены нормальные..."></div>
+          </div>
+          <button class="btn" onclick="addSto()" style="margin-bottom:16px;">+ ДОБАВИТЬ СТО</button>
+          <div id="sto-list"><div class="empty">СТО не добавлены</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- ADD SERVICE PANEL -->
+      <div class="panel imp" id="add-svc-panel" style="display:none;"><div class="ph"><div class="pt imp" id="add-svc-title">ДОБАВИТЬ РАБОТУ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Описание работы</label><input type="text" id="svc-desc" placeholder="Замена масла, Диагностика..."></div>
+          <div class="f"><label>Стоимость работы (тг)</label><input type="number" id="svc-labor" step="any" placeholder="5000"></div>
+          <div class="f"><label>Дата</label><input type="date" id="svc-date"></div>
+        </div>
+        <div class="form-row c4">
+          <div class="f"><label>Пробег (км)</label><input type="text" id="svc-mileage" inputmode="decimal"></div>
+          <div class="f"><label>СТО из справочника</label><select id="svc-where-sel" onchange="applyStoSvc()"><option value="">— выбрать СТО —</option></select></div>
+          <div class="f"><label>Или вручную</label><input type="text" id="svc-where" placeholder="СТО Мастер / сам"></div>
+          <div class="f"><label>Связанная запчасть</label><select id="svc-part"><option value="">— без запчасти —</option></select></div>
+        </div>
+        <div style="margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--mono);font-size:11px;"><input type="checkbox" id="svc-diy"> <span style="color:var(--green);">DIY — сделал сам (работа бесплатна)</span></label></div>
+        <div style="display:flex;gap:10px;"><button class="btn" onclick="addService()">+ ДОБАВИТЬ РАБОТУ</button><button class="btn edit" onclick="closeAddSvc()">ОТМЕНА</button></div>
+      </div></div>
+    <!-- ACCOUNTS & TRANSFERS -->
+    <div id="s-accounts" class="section">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="panel imp">
+          <div class="ph"><div class="pt imp">ДОБАВИТЬ СЧЁТ</div></div>
+          <div class="pb">
+            <div class="form-row c2">
+              <div class="f"><label>Название счёта</label><input type="text" id="acc-name" placeholder="Kaspi Gold, Наличные..."></div>
+              <div class="f"><label>Тип</label><select id="acc-type"><option>Карта</option><option>Наличные</option><option>Текущий счёт</option><option>Другое</option></select></div>
+            </div>
+            <div class="form-row c2">
+              <div class="f"><label>Начальный баланс</label><input type="text" id="acc-balance" inputmode="decimal" placeholder="0"></div>
+              <div class="f"><label>Валюта</label><select id="acc-cur"><option>KZT</option><option>USD</option><option>EUR</option></select></div>
+            </div>
+            <button class="btn" onclick="addAccount()">+ ДОБАВИТЬ СЧЁТ</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">МОИ СЧЕТА</div></div>
+          <div class="pb">
+            <div id="accounts-list"><div class="empty">Счета не добавлены</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel imp" style="margin-bottom:16px;">
+        <div class="ph"><div class="pt imp">ПЕРЕВОД МЕЖДУ СЧЕТАМИ</div></div>
+        <div class="pb">
+          <div class="form-row c3">
+            <div class="f"><label>Откуда</label><select id="tr-from"><option value="">— выберите —</option></select></div>
+            <div class="f"><label>Куда</label><select id="tr-to"><option value="">— выберите —</option></select></div>
+            <div class="f"><label>Сумма</label><input type="text" id="tr-sum" inputmode="decimal" placeholder="0"></div>
+          </div>
+          <div class="form-row c2">
+            <div class="f"><label>Дата</label><input type="date" id="tr-date"></div>
+            <div class="f"><label>Комментарий</label><input type="text" id="tr-note" placeholder="Пополнение депозита..."></div>
+          </div>
+          <button class="btn" onclick="addTransfer()">→ ПЕРЕВЕСТИ</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pt">ИСТОРИЯ ПЕРЕВОДОВ</div></div>
+        <div class="pb">
+          <div class="tbl-w"><table>
+            <thead><tr><th>ДАТА</th><th>ОТКУДА</th><th>КУДА</th><th class="r">СУММА</th><th>КОММЕНТАРИЙ</th><th></th></tr></thead>
+            <tbody id="transfers-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+    <!-- DEBTS -->
+    <div id="s-debts" class="section">
+      <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;">
+        <button class="debt-tab active" id="dtab-bank" onclick="showDebtTab('bank',this)">БАНКОВСКИЕ КРЕДИТЫ</button>
+        <button class="debt-tab" id="dtab-private" onclick="showDebtTab('private',this)">Я ДОЛЖЕН</button>
+        <button class="debt-tab" id="dtab-ioweme" onclick="showDebtTab('ioweme',this)">МНЕ ДОЛЖНЫ</button>
+      </div>
+
+      <div id="dpane-bank">
+        <div class="panel">
+          <div class="ph"><div class="pt">ДОБАВИТЬ КРЕДИТ</div></div>
+          <div class="pb">
+            <div class="form-row c3">
+              <div class="f"><label>Банк</label><input type="text" id="cr-bank" placeholder="Народный Банк"></div>
+              <div class="f"><label>Тип</label><select id="cr-type"><option>Ипотека</option><option>Потребительский</option><option>Автокредит</option><option>Бизнес</option><option>Другое</option></select></div>
+              <div class="f"><label>Начальная сумма</label><input type="text" id="cr-total" inputmode="decimal"></div>
+            </div>
+            <div class="form-row c3">
+              <div class="f"><label>Остаток долга</label><input type="text" id="cr-rest" inputmode="decimal"></div>
+              <div class="f"><label>Ежемес. платёж</label><input type="text" id="cr-pay" inputmode="decimal"></div>
+              <div class="f"><label>Ставка %</label><input type="text" id="cr-rate" inputmode="decimal"></div>
+            </div>
+            <div class="form-row c2">
+              <div class="f"><label>Дата закрытия</label><input type="date" id="cr-end"></div>
+              <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addCredit()">+ ДОБАВИТЬ</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel crit">
+          <div class="ph"><div class="pt crit">МОИ КРЕДИТЫ</div></div>
+          <div class="pb">
+            <div class="tbl-w"><table>
+              <thead><tr><th>БАНК</th><th>ТИП</th><th class="r">НАЧАЛЬНАЯ</th><th class="r">ОСТАТОК</th><th class="r">ЕЖ. ПЛАТЁЖ</th><th class="r">СТАВКА</th><th>ЗАКРЫТИЕ</th><th class="r">ПОГАШЕНО</th><th>ОБНОВЛЕНО</th><th>ДЕЙСТВИЯ</th></tr></thead>
+              <tbody id="cr-tbody"><tr><td colspan="10" class="empty">—</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dpane-private" style="display:none;">
+        <div class="panel">
+          <div class="ph"><div class="pt">ДОБАВИТЬ ДОЛГ (Я ДОЛЖЕН)</div></div>
+          <div class="pb">
+            <div class="form-row c3">
+              <div class="f"><label>Кредитор (имя)</label><input type="text" id="pd-name" placeholder="Иван Иванов"></div>
+              <div class="f"><label>Контакт / заметка</label><input type="text" id="pd-contact" placeholder="Телефон, родственник..."></div>
+              <div class="f"><label>Сумма займа</label><input type="text" id="pd-sum" inputmode="decimal"></div>
+            </div>
+            <div class="form-row c3">
+              <div class="f"><label>Дата займа</label><input type="date" id="pd-date"></div>
+              <div class="f"><label>Дата возврата</label><input type="date" id="pd-due"></div>
+              <div class="f"><label>Тип условий</label><select id="pd-rate-type" onchange="togglePdRate()"><option value="none">Без процентов</option><option value="percent">Ставка %</option><option value="fixed">Фиксированная сумма возврата</option></select></div>
+            </div>
+            <div class="form-row c2" id="pd-rate-wrap" style="display:none;">
+              <div class="f"><label id="pd-rate-label">Значение</label><input type="text" id="pd-rate-val" inputmode="decimal"></div>
+              <div class="f"><label>Условия возврата</label><input type="text" id="pd-terms" placeholder="10 месяцев по 50 000"></div>
+            </div>
+            <button class="btn" onclick="addPrivateDebt()">+ ДОБАВИТЬ ДОЛГ</button>
+          </div>
+        </div>
+        <div class="panel crit">
+          <div class="ph"><div class="pt crit">Я ДОЛЖЕН</div></div>
+          <div class="pb">
+            <div class="tbl-w"><table>
+              <thead><tr><th>КРЕДИТОР</th><th>КОНТАКТ</th><th class="r">СУММА</th><th class="r">К ВОЗВРАТУ</th><th class="r">ОСТАТОК</th><th>ДАТА</th><th>СРОК</th><th>УСЛОВИЯ</th><th>ДЕЙСТВИЯ</th></tr></thead>
+              <tbody id="pd-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="dpane-ioweme" style="display:none;">
+        <div class="panel">
+          <div class="ph"><div class="pt">ДОБАВИТЬ (МНЕ ДОЛЖНЫ)</div></div>
+          <div class="pb">
+            <div class="form-row c3">
+              <div class="f"><label>Должник (имя)</label><input type="text" id="iom-name" placeholder="Пётр Петров"></div>
+              <div class="f"><label>Контакт</label><input type="text" id="iom-contact" placeholder="Телефон, коллега..."></div>
+              <div class="f"><label>Сумма</label><input type="text" id="iom-sum" inputmode="decimal"></div>
+            </div>
+            <div class="form-row c3">
+              <div class="f"><label>Дата выдачи</label><input type="date" id="iom-date"></div>
+              <div class="f"><label>Дата возврата</label><input type="date" id="iom-due"></div>
+              <div class="f"><label>Заметка</label><input type="text" id="iom-note" placeholder="За что, когда договорились..."></div>
+            </div>
+            <button class="btn" onclick="addIOweMe()">+ ДОБАВИТЬ</button>
+          </div>
+        </div>
+        <div class="panel imp">
+          <div class="ph"><div class="pt imp">МНЕ ДОЛЖНЫ</div></div>
+          <div class="pb">
+            <div class="tbl-w"><table>
+              <thead><tr><th>ДОЛЖНИК</th><th>КОНТАКТ</th><th class="r">СУММА</th><th class="r">ВОЗВРАЩЕНО</th><th class="r">ОСТАТОК</th><th>ДАТА</th><th>СРОК</th><th>ЗАМЕТКА</th><th>ДЕЙСТВИЯ</th></tr></thead>
+              <tbody id="iom-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- REMINDERS -->
+    <div id="s-reminders" class="section">
+      <div class="panel crit"><div class="ph"><div class="pt crit">ВСЕ НАПОМИНАНИЯ</div></div><div class="pb" id="all-reminders"></div></div>
+    </div>
+  </div>
+</div>
+<div id="modal" class="modal-ov" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-t" id="modal-title">РЕДАКТИРОВАНИЕ</div><div id="modal-body"></div><div class="modal-a"><button class="btn" id="modal-save-btn">СОХРАНИТЬ</button><button class="btn del sm" onclick="closeModal()">ОТМЕНА</button></div></div>
+</div>
+<script>
+const PASS='231016';
+const CLR=['#fbb804','#3b8cf8','#00c896','#f05252','#a78bfa','#22d3ee','#f97316','#34d399','#f87171','#60a5fa','#fbbf24','#818cf8'];
+const td=()=>new Date().toISOString().slice(0,10);
+
+// Number input formatting — text inputs with number formatting
+function initNumInputs(){
+  document.querySelectorAll('input[type="number"]').forEach(inp=>{
+    if(inp.dataset.fmtInit) return;
+    inp.dataset.fmtInit='1';
+    // Convert to text input
+    inp.type='text';
+    inp.inputMode='decimal';
+    inp.classList.add('num-input');
+    inp.addEventListener('focus',function(){
+      // Show raw value for editing
+      const raw=this.dataset.rawVal||'';
+      this.value=raw;
+      this.select();
+    });
+    inp.addEventListener('blur',function(){
+      const raw=this.value.replace(/\s+/g,'').replace(',','.');
+      const num=parseFloat(raw);
+      if(!isNaN(num)&&this.value.trim()!==''){
+        this.dataset.rawVal=String(num);
+        this.value=num.toLocaleString('ru-RU',{maximumFractionDigits:6});
+        this.classList.remove('error');
+      } else if(this.value.trim()===''){
+        this.dataset.rawVal='';
+        this.value='';
+      } else {
+        this.classList.add('error');
+      }
+    });
+    inp.addEventListener('input',function(){
+      this.dataset.rawVal=this.value.replace(/\s+/g,'').replace(',','.');
+    });
+    // Format initial value if present
+    if(inp.value&&!isNaN(parseFloat(inp.value))){
+      const num=parseFloat(inp.value);
+      inp.dataset.rawVal=String(num);
+      inp.value=num.toLocaleString('ru-RU',{maximumFractionDigits:6});
+    }
+  });
+}
+const MONTHS_RU=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function monthLabel(ym){
+  const parts=ym.split('-');
+  if(parts.length!==2) return ym;
+  const m=parseInt(parts[1])-1;
+  return MONTHS_RU[m]+' '+parts[0];
+}
+function safeNum(id){
+  const el=document.getElementById(id);
+  if(!el) return NaN;
+  const raw=(el.dataset.rawVal!==undefined&&el.dataset.rawVal!=='')?el.dataset.rawVal:el.value;
+  return safeParseFloat(raw);
+}
+function safeParseFloat(val){
+  if(val==null) return NaN;
+  if(typeof val==='number') return val;
+  return parseFloat(String(val).replace(/\s+/g,'').replace(',','.'));
+}
+const ymOf=(d)=>{const x=d?new Date(d):new Date();return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`;};
+
+let D={invest:[],dividends:[],iHistory:[],nwHistory:[],deposits:[],credits:[],assets:[],income:[],expenses:[],rent:[],goals:[],enpf:[],insurance:[],subs:[],cars:[],parts:[],services:[],govPremiums:[],properties:[],accounts:[],transfers:[],privateDebts:[],iOweMe:[],stos:[],settings:{usdRate:450,eurRate:500}};
+let incSort='date',currentCarId=null;
+
+function save(){try{localStorage.setItem('fd3',JSON.stringify(D));}catch(e){}}
+function load(){try{const d=localStorage.getItem('fd3');if(d)D={...D,...JSON.parse(d)};}catch(e){}}
+
+function exportData(){const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='finance_v3_'+td()+'.json';a.click();}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{D={...D,...JSON.parse(ev.target.result)};save();renderAll();alert('Данные загружены!');}catch(err){alert('Ошибка файла');}};r.readAsText(f);e.target.value='';}
+
+let idleSec=0,timerIv;
+const IDLE=1800;
+function resetIdle(){idleSec=0;}
+function startTimer(){
+  clearInterval(timerIv);
+  timerIv=setInterval(()=>{
+    idleSec++;const left=IDLE-idleSec;const m=Math.floor(left/60),s=left%60;
+    const el=document.getElementById('t-timer');if(el)el.textContent=`${m}:${String(s).padStart(2,'0')}`;
+    if(idleSec>=IDLE)logout();
+  },1000);
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(ev=>document.addEventListener(ev,resetIdle,{passive:true}));
+}
+function doLogin(){
+  if(document.getElementById('pwd-input').value===PASS){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').classList.add('visible');
+    idleSec=0;startTimer();renderAll();
+  } else document.getElementById('login-err').style.display='block';
+}
+function logout(){clearInterval(timerIv);document.getElementById('app').classList.remove('visible');document.getElementById('login-screen').style.display='flex';document.getElementById('pwd-input').value='';document.getElementById('login-err').style.display='none';}
+
+function showSection(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');el.classList.add('active');
+  setTimeout(initNumInputs,100);
+  if(id==='dashboard')renderDashboard();
+  if(id==='reminders')renderReminders();
+  if(id==='expenses'){renderExpenses();renderExpAnalytics();}
+  if(id==='goals')updateGoalDepDropdown();
+  if(id==='insurance')updInsCarDropdown();
+  if(id==='property')renderProperty();
+  if(id==='accounts'){renderAccounts();renderTransfers();updTransferDropdowns();}
+  if(id==='debts'){renderCredits();renderPrivateDebts();renderIOweMe();}
+  if(id==='income')updIncomeDepDropdown();
+  if(id==='rent'){updRentPropDropdown();}
+}
+
+function fmt(n,d=0){if(n==null||isNaN(n)||n==='')return'—';return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtP(n){if(n==null||isNaN(n))return'—';return(n>=0?'+':'')+Number(n).toFixed(1)+'%';}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/(864e5));}
+function daysLeft(d){if(!d)return null;return daysBetween(td(),d);}
+function updateDate(){const el=document.getElementById('t-date');if(el){const d=new Date();el.textContent=d.toLocaleDateString('ru-RU',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});}}
+
+const CH={};
+function mkChart(id,type,data,opts){
+  if(CH[id])CH[id].destroy();
+  const c=document.getElementById(id);if(!c)return;
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};
+  CH[id]=new Chart(c,{type,data,options:opts||base});
+}
+
+function openModal(title,html,saveFn){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-save-btn').onclick=saveFn;document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+function mF(label,id,val,type='text',opts=null){
+  if(opts){const o=opts.map(x=>`<option${x==val?' selected':''}>${x}</option>`).join('');return`<div class="f"><label>${label}</label><select id="m-${id}">${o}</select></div>`;}
+  return`<div class="f"><label>${label}</label><input type="${type}" id="m-${id}" value="${val!=null?val:''}"></div>`;
+}
+const mv=id=>{const e=document.getElementById('m-'+id);return e?e.value:'';};
+const mvf=id=>safeParseFloat(mv(id));
+
+// INVESTMENTS
+function addInvest(){
+  const name=document.getElementById('i-name').value.trim(),ticker=document.getElementById('i-ticker').value.trim().toUpperCase(),date=document.getElementById('i-date').value;
+  const qty=safeNum('i-qty'),price=safeNum('i-price');
+  const cur=safeNum('i-cur')||price,currency=document.getElementById('i-currency').value,notes=document.getElementById('i-notes').value.trim();
+  if(!name||!ticker||!date||isNaN(qty)||isNaN(price)){alert('Заполните обязательные поля');return;}
+  const source=document.getElementById('i-source').value||'purchased';
+  D.invest.push({id:Date.now(),name,ticker,date,qty,price,currentPrice:cur,currency,notes,updAt:td(),source});
+  D.iHistory.push({date:td(),value:D.invest.reduce((s,p)=>s+p.qty*p.currentPrice,0)});
+  save();renderInvest();updInvDD();
+  ['i-name','i-ticker','i-date','i-qty','i-price','i-cur','i-notes'].forEach(id=>document.getElementById(id).value='');
+}
+function updateInvestPrice(){
+  const t=document.getElementById('i-upd-t').value,p=safeNum('i-upd-p');
+  if(!t||isNaN(p))return;
+  D.invest.forEach(x=>{if(x.ticker===t){x.currentPrice=p;x.updAt=td();}});
+  D.iHistory.push({date:td(),value:D.invest.reduce((s,x)=>s+x.qty*x.currentPrice,0)});
+  save();renderInvest();document.getElementById('i-upd-p').value='';
+}
+function editInvest(id){
+  const p=D.invest.find(x=>x.id===id);if(!p)return;
+  const html=`<div class="form-row c3">${mF('Наименование','name',p.name)}${mF('Тикер','ticker',p.ticker)}${mF('Дата','date',p.date,'date')}</div><div class="form-row c4">${mF('Количество','qty',p.qty,'number')}${mF('Цена покупки','price',p.price,'number')}${mF('Текущая цена','cur',p.currentPrice,'number')}${mF('Валюта','cur2',p.currency,null,['USD','KZT','RUB','EUR'])}</div><div class="form-row c2">${mF('Заметки','notes',p.notes)}${mF('Тип','src',p.source||'purchased',null,['purchased','cashback'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ ПОЗИЦИЮ',html,()=>{p.name=mv('name');p.ticker=mv('ticker').toUpperCase();p.date=mv('date');p.qty=mvf('qty');p.price=mvf('price');p.currentPrice=mvf('cur');p.currency=mv('cur2');p.notes=mv('notes');p.source=mv('src');p.updAt=td();save();renderInvest();closeModal();});
+}
+function delInvest(id){if(!confirm('Удалить?'))return;D.invest=D.invest.filter(x=>x.id!==id);save();renderInvest();updInvDD();}
+let invGrouped=false;
+function toggleInvView(){
+  invGrouped=!invGrouped;
+  const btn=document.getElementById('inv-view-btn');
+  const flat=document.getElementById('invest-flat');
+  const grouped=document.getElementById('invest-grouped');
+  if(btn)btn.textContent=invGrouped?'▶ ПЛОСКИЙ ВИД':'▼ ГРУППИРОВАТЬ';
+  if(flat)flat.style.display=invGrouped?'none':'block';
+  if(grouped)grouped.style.display=invGrouped?'block':'none';
+  if(invGrouped)renderInvestGrouped();
+}
+function renderInvestGrouped(){
+  const el=document.getElementById('invest-grouped');if(!el)return;
+  if(!D.invest.length){el.innerHTML='<div class="empty">Портфель пуст</div>';return;}
+  const totCur=D.invest.reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  // Group by ticker
+  const groups={};
+  D.invest.forEach(p=>{
+    if(!groups[p.ticker])groups[p.ticker]=[];
+    groups[p.ticker].push(p);
+  });
+  el.innerHTML=Object.keys(groups).map(ticker=>{
+    const lots=groups[ticker];
+    const totalQty=lots.reduce((s,p)=>s+p.qty,0);
+    const totalInv=lots.reduce((s,p)=>s+p.qty*p.price,0);
+    const avgPrice=totalQty?totalInv/totalQty:0;
+    const curPrice=lots[lots.length-1].currentPrice;
+    const totalCur=totalQty*curPrice;
+    const pnl=totalCur-totalInv;
+    const pct=totalInv?(pnl/totalInv)*100:0;
+    const share=totCur?(totalCur/totCur)*100:0;
+    const currency=lots[0].currency;
+    const divTotal=D.dividends.filter(d=>d.ticker===ticker).reduce((s,d)=>d.total!=null?s+d.total:s+d.amount*(d.qty||0),0);
+    const cl=pnl>=0?'pos':'neg';
+    const groupId='grp_'+ticker;
+    return`<div style="margin-bottom:8px;border:1px solid var(--border);background:var(--bg3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--bg4);" onclick="toggleInvGroup('${groupId}')">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--gold);">${ticker}</span>
+          <span style="font-size:11px;font-family:var(--mono);color:var(--text2);">${fmt(totalQty)} шт • ${lots.length} лот${lots.length>1?'а':''}</span>
+          ${lots.some(p=>p.source==='cashback')?'<span class="badge blue" style="font-size:8px;">КЭШБЭК</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text2);">Ср. цена: ${fmt(avgPrice,2)}</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text);">${fmt(totalCur,0)} ${currency}</span>
+          <span style="font-family:var(--mono);font-size:12px;" class="${cl}">${pnl>=0?'+':''}${fmt(pnl,0)} (${fmtP(pct)})</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">${fmt(share,1)}%</span>
+          ${divTotal>0?`<span style="font-family:var(--mono);font-size:11px;color:var(--green);">Дивид: ${fmt(divTotal,0)}</span>`:''}
+          <span style="color:var(--text3);font-size:12px;" id="${groupId}_icon">▼</span>
+        </div>
+      </div>
+      <div id="${groupId}" style="display:none;padding:10px 14px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);">
+          <thead><tr style="background:var(--bg5);"><th style="padding:6px 8px;text-align:left;color:var(--text3);font-size:10px;">ДАТА</th><th style="padding:6px 8px;text-align:right;color:var(--text3);font-size:10px;">КОЛ-ВО</th><th style="padding:6px 8px;text-align:right;color:var(--text3);font-size:10px;">ЦЕНА ПОКУПКИ</th><th style="padding:6px 8px;text-align:right;color:var(--text3);font-size:10px;">ВЛОЖЕНО</th><th style="padding:6px 8px;text-align:left;color:var(--text3);font-size:10px;">ТИП</th><th style="padding:6px 8px;text-align:left;color:var(--text3);font-size:10px;">ЗАМЕТКИ</th><th></th></tr></thead>
+          <tbody>${lots.map(p=>`<tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 8px;color:var(--text2);">${p.date}</td><td style="padding:5px 8px;text-align:right;color:var(--text);">${fmt(p.qty)}</td><td style="padding:5px 8px;text-align:right;color:var(--text2);">${fmt(p.price,2)}</td><td style="padding:5px 8px;text-align:right;color:var(--text2);">${fmt(p.qty*p.price,0)}</td><td style="padding:5px 8px;">${p.source==='cashback'?'<span class="badge blue" style="font-size:8px;">КЭШБЭК</span>':'<span class="badge grey" style="font-size:8px;">КУПЛЕНО</span>'}</td><td style="padding:5px 8px;color:var(--text3);max-width:100px;overflow:hidden;text-overflow:ellipsis;">${p.notes||'—'}</td><td style="padding:5px 8px;"><button class="btn sm edit" onclick="editInvest(${p.id})">✎</button></td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleInvGroup(id){
+  const el=document.getElementById(id);
+  const icon=document.getElementById(id+'_icon');
+  if(el){el.style.display=el.style.display==='none'?'block':'none';}
+  if(icon){icon.textContent=el.style.display==='none'?'▼':'▲';}
+}
+function renderInvest(){
+  const tbody=document.getElementById('invest-tbody');
+  if(!D.invest.length){tbody.innerHTML='<tr><td colspan="14" class="empty">Портфель пуст</td></tr>';renderPieCharts();renderLineChart();renderDivChart();return;}
+  const totCur=D.invest.reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  const avg={};D.invest.forEach(p=>{if(!avg[p.ticker])avg[p.ticker]={tc:0,tq:0};avg[p.ticker].tc+=p.qty*p.price;avg[p.ticker].tq+=p.qty;});
+  tbody.innerHTML=D.invest.map(p=>{
+    const inv=p.qty*p.price,cur=p.qty*p.currentPrice,pnl=cur-inv,pct=inv?(pnl/inv)*100:0,share=totCur?(cur/totCur)*100:0;
+    const cl=pnl>=0?'pos':'neg',rc=pnl<-10?'rc':pnl>0?'ri':'';
+    const srcBadge=p.source==='cashback'?'<span class="badge blue" style="font-size:8px;">КЭШБЭК</span>':'';
+    return`<tr class="${rc}"><td class="nm">${p.name} ${srcBadge}</td><td class="tk">${p.ticker}</td><td>${p.date}</td><td class="r">${fmt(p.qty)}</td><td class="r">${fmt(p.price,2)}</td><td class="r">${p.source==='cashback'?'<span style="color:var(--blue);">награда</span>':fmt(inv,0)}</td><td class="r">${fmt(p.currentPrice,2)}</td><td class="r">${fmt(cur,0)}</td><td class="r ${cl}">${pnl>=0?'+':''}${fmt(pnl,0)}</td><td class="r ${cl}">${fmtP(pct)}</td><td class="r">${fmt(share,1)}%</td><td>${p.currency}</td><td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;">${p.notes||'—'}</td><td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editInvest(${p.id})">✎</button><button class="btn sm del" onclick="delInvest(${p.id})">✕</button></td></tr>`;
+  }).join('');
+  renderPieCharts();renderLineChart();renderRewardSummary();
+}
+function renderRewardSummary(){
+  const rewards=D.invest.filter(p=>p.source==='cashback');
+  const panel=document.getElementById('reward-panel');
+  const summary=document.getElementById('reward-summary');
+  if(!rewards.length){if(panel)panel.style.display='none';return;}
+  if(panel)panel.style.display='block';
+  const totalVal=rewards.reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  const totalCost=rewards.reduce((s,p)=>s+p.qty*p.price,0);
+  summary.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;">${rewards.map(p=>{const val=p.qty*p.currentPrice;return`<div style="background:var(--bg4);border:1px solid var(--imp-bdr);padding:10px 14px;min-width:160px;"><div style="font-size:11px;font-family:var(--mono);color:var(--blue);margin-bottom:4px;">${p.ticker}</div><div style="font-size:13px;font-family:var(--mono);color:var(--text);">${fmt(val,0)} ${p.currency}</div><div style="font-size:10px;font-family:var(--mono);color:var(--text3);">${fmt(p.qty)} шт • ${fmt(p.currentPrice,2)}</div></div>`;}).join('')}<div style="background:var(--bg4);border:1px solid var(--gold);padding:10px 14px;min-width:160px;"><div style="font-size:11px;font-family:var(--mono);color:var(--gold);margin-bottom:4px;">ИТОГО НАГРАД</div><div style="font-size:13px;font-family:var(--mono);color:var(--gold);">${fmt(totalVal,0)}</div></div></div>`;
+}
+function renderPieCharts(){
+  if(!D.invest.length){['c-pie-val','c-pie-qty'].forEach(id=>{if(CH[id])CH[id].destroy();document.getElementById('l-pie-'+(id==='c-pie-val'?'val':'qty')).innerHTML='';});return;}
+  const totV=D.invest.reduce((s,p)=>s+p.qty*p.currentPrice,0),totQ=D.invest.reduce((s,p)=>s+p.qty,0);
+  const gV={},gQ={};D.invest.forEach(p=>{gV[p.ticker]=(gV[p.ticker]||0)+p.qty*p.currentPrice;gQ[p.ticker]=(gQ[p.ticker]||0)+p.qty;});
+  const lV=Object.keys(gV),dV=lV.map(t=>gV[t]),bV=lV.map((_,i)=>CLR[i%CLR.length]);
+  const lQ=Object.keys(gQ),dQ=lQ.map(t=>gQ[t]),bQ=lQ.map((_,i)=>CLR[i%CLR.length]);
+  const po=(cb)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:cb}}}});
+  mkChart('c-pie-val','doughnut',{labels:lV,datasets:[{data:dV,backgroundColor:bV,borderColor:'#070b12',borderWidth:2}]},po(ctx=>{const p=totV?((ctx.parsed/totV)*100).toFixed(1):0;return` ${ctx.label}: ${fmt(ctx.parsed,0)} (${p}%)` ;}));
+  mkChart('c-pie-qty','doughnut',{labels:lQ,datasets:[{data:dQ,backgroundColor:bQ,borderColor:'#070b12',borderWidth:2}]},po(ctx=>{const p=totQ?((ctx.parsed/totQ)*100).toFixed(1):0;return` ${ctx.label}: ${fmt(ctx.parsed)} шт (${p}%)`;}));
+  const lv=document.getElementById('l-pie-val'),lq=document.getElementById('l-pie-qty');
+  if(lv)lv.innerHTML=lV.map((l,i)=>{const p=totV?((gV[l]/totV)*100).toFixed(1):0;return`<span style="display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;background:${bV[i]};display:inline-block;"></span>${l} ${p}%</span>`;}).join('');
+  if(lq)lq.innerHTML=lQ.map((l,i)=>{const p=totQ?((gQ[l]/totQ)*100).toFixed(1):0;return`<span style="display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;background:${bQ[i]};display:inline-block;"></span>${l} ${fmt(gQ[l])} шт (${p}%)</span>`;}).join('');
+}
+function renderLineChart(){
+  if(!D.iHistory.length)return;
+  const gr={};D.iHistory.forEach(h=>{gr[h.date]=h.value;});
+  const dates=Object.keys(gr).sort(),vals=dates.map(d=>gr[d]);
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:6},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};
+  mkChart('c-line','line',{labels:dates,datasets:[{data:vals,borderColor:'#3b8cf8',backgroundColor:'rgba(59,140,248,0.07)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#3b8cf8',fill:true,tension:.3}]},base);
+}
+function updInvDD(){
+  const tt=[...new Set(D.invest.map(p=>p.ticker))];
+  ['i-upd-t','d-t'].forEach(id=>{const s=document.getElementById(id);if(!s)return;s.innerHTML=tt.length?tt.map(t=>`<option>${t}</option>`).join(''):'<option>—</option>';});
+}
+function addDiv(){
+  const ticker=document.getElementById('d-t').value;
+  const date=document.getElementById('d-date').value;
+  const amount=safeNum('d-amt');
+  const eligible=safeNum('d-eligible');
+  const override=safeNum('d-override');
+  if(!ticker||!date||isNaN(amount)||amount<=0){alert('Заполните тикер, дату и дивиденд на акцию');return;}
+  const qty=(!isNaN(eligible)&&eligible>0)?eligible:0;
+  if(qty===0&&!(override>0)){alert('Укажите кол-во eligible акций или ручную сумму от брокера');return;}
+  const total=override>0?override:amount*qty;
+  D.dividends.push({id:Date.now(),ticker,date,amount,qty,override:override>0?override:null,total});
+  save();renderDivTable();renderDivChart();
+  ['d-date','d-amt','d-eligible','d-override'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+}
+function delDiv(id){D.dividends=D.dividends.filter(d=>d.id!==id);save();renderDivTable();renderDivChart();}
+function renderDivTable(){
+  const tb=document.getElementById('div-tbody'),st=document.getElementById('div-sum-tbody');
+  if(!D.dividends.length){tb.innerHTML='<tr><td colspan="6" class="empty">—</td></tr>';st.innerHTML='<tr><td colspan="2" class="empty">—</td></tr>';return;}
+  const s=[...D.dividends].sort((a,b)=>b.date.localeCompare(a.date));
+  tb.innerHTML=s.map(d=>`<tr><td class="tk">${d.ticker}</td><td>${d.date}</td><td class="r">${fmt(d.amount,2)}</td><td class="r">${fmt(d.qty)}</td><td class="r pos">${fmt(d.amount*d.qty,0)}</td><td><button class="btn sm del" onclick="delDiv(${d.id})">✕</button></td></tr>`).join('');
+  const by={};D.dividends.forEach(d=>{const t=d.total!=null?d.total:(d.amount*d.qty);by[d.ticker]=(by[d.ticker]||0)+t;});
+  st.innerHTML=Object.keys(by).map(t=>`<tr><td class="tk">${t}</td><td class="r pos">${fmt(by[t],0)}</td></tr>`).join('');
+}
+function renderDivChart(){
+  if(!D.dividends.length)return;
+  const by={};D.dividends.forEach(d=>{const y=d.date.slice(0,4);by[y]=(by[y]||0)+d.amount*d.qty;});
+  const yrs=Object.keys(by).sort();
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};
+  mkChart('c-div','bar',{labels:yrs,datasets:[{data:yrs.map(y=>by[y]),backgroundColor:'rgba(0,200,150,0.6)',borderColor:'#00c896',borderWidth:1}]},base);
+}
+
+// DEPOSITS
+function addDeposit(){
+  const bank=document.getElementById('dep-bank').value.trim(),type=document.getElementById('dep-type').value;
+  const sum=safeNum('dep-sum'),rate=safeNum('dep-rate');
+  const start=document.getElementById('dep-start').value,end=document.getElementById('dep-end').value,cur=document.getElementById('dep-cur').value;
+  if(!bank||isNaN(sum)||isNaN(rate)||!start){alert('Заполните обязательные поля');return;}
+  const dep={id:Date.now(),bank,type,sum,rate,start,end,cur,updAt:td()};
+  // Otbasy extras
+  if(type==='otbasy'){
+    dep.govRate=safeNum('dep-gov-rate')||20;
+    dep.govLimit=safeNum('dep-gov-limit')||0.10;
+    dep.bonusDate=document.getElementById('dep-bonus-date').value||'';
+  }
+  D.deposits.push(dep);
+  save();renderDeposits();toggleOtbasy();
+  ['dep-bank','dep-sum','dep-rate','dep-start','dep-end','dep-gov-rate','dep-gov-limit','dep-bonus-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+function toggleOtbasy(){
+  const t=document.getElementById('dep-type').value;
+  const wrap=document.getElementById('otbasy-wrap');
+  if(wrap)wrap.style.display=t==='otbasy'?'grid':'none';
+}
+function editDeposit(id){
+  const d=D.deposits.find(x=>x.id===id);if(!d)return;
+  const html=`<div class="form-row c3">${mF('Банк','bank',d.bank)}${mF('Тип','type',d.type,null,['fixed','saving'])}${mF('Сумма','sum',d.sum,'number')}</div><div class="form-row c3">${mF('Ставка','rate',d.rate,'number')}${mF('Открытие','start',d.start,'date')}${mF('Закрытие','end',d.end,'date')}</div><div class="form-row">${mF('Валюта','cur',d.cur,null,['KZT','USD','EUR'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ ДЕПОЗИТ',html,()=>{d.bank=mv('bank');d.type=mv('type');d.sum=mvf('sum');d.rate=mvf('rate');d.start=mv('start');d.end=mv('end');d.cur=mv('cur');d.updAt=td();save();renderDeposits();closeModal();});
+}
+function delDeposit(id){if(!confirm('Удалить?'))return;D.deposits=D.deposits.filter(x=>x.id!==id);save();renderDeposits();}
+function calcCap(d){
+  if(d.type!=='fixed'||!d.start)return d.sum;
+  const ref=td()<(d.end||'9999')?td():d.end;
+  const m=Math.floor(daysBetween(d.start,ref)/30.44);
+  return d.sum*Math.pow(1+(d.rate/100/12),m);
+}
+function addGovPremium(depId){
+  const dep=D.deposits.find(x=>x.id===depId);if(!dep)return;
+  const amount=parseFloat(prompt('Введите сумму гос. премии (тг):'));
+  if(isNaN(amount)||amount<=0)return;
+  const year=prompt('Год начисления:', new Date().getFullYear());
+  if(!year)return;
+  D.govPremiums.push({id:Date.now(),depId,amount,year:parseInt(year),date:td()});
+  save();renderDeposits();
+}
+function delGovPremium(id){
+  if(!confirm('Удалить запись?'))return;
+  D.govPremiums=D.govPremiums.filter(x=>x.id!==id);
+  save();renderDeposits();
+}
+function renderDeposits(){
+  const tb=document.getElementById('dep-tbody');
+  if(!D.deposits.length){tb.innerHTML='<tr><td colspan="12" class="empty">—</td></tr>';return;}
+  // Group by exact bank name using reduce to avoid Set truncation issues
+  const bankMap={};
+  D.deposits.forEach(d=>{
+    const key=d.bank;
+    if(!bankMap[key])bankMap[key]=[];
+    bankMap[key].push(d);
+  });
+  let html='';
+  Object.keys(bankMap).forEach(bank=>{
+    const grp=bankMap[bank];
+    const tot=grp.reduce((s,d)=>s+d.sum,0);
+    html+=`<tr class="grp-row"><td colspan="12">▸ ${bank} — итого: ${fmt(tot,0)} | ${grp.length} деп.</td></tr>`;
+    grp.forEach(d=>{
+      const isF=d.type==='fixed',isO=d.type==='otbasy',cap=(isF||isO)?calcCap(d):d.sum;
+      const pi=(isF||isO)?(cap-d.sum):null,pm=(isF||isO)?(d.sum*(d.rate/100)/12):null;
+      const govPrem=isO&&d.govRate?(d.sum*Math.min(d.govRate/100,d.govLimit||0.10)):null;
+      const left=d.end?daysLeft(d.end):null;
+      const lcl=left===null?'':left<30?'neg':left<90?'tk':'pos';
+      const rc=left!==null&&left<30?'rc':left!==null&&left<90?'ri':'';
+      const typeBadge=isO?'<span class="badge blue">ЖИЛ.-НАКОПИТ.</span>':isF?'<span class="badge gold">СРОЧНЫЙ</span>':'<span class="badge green">НАКОПИТ.</span>';
+      html+=`<tr class="${rc}">
+        <td class="nm" style="padding-left:20px;">${d.bank}</td>
+        <td>${typeBadge}</td>
+        <td>${d.cur}</td>
+        <td class="r">${fmt(d.sum,0)}</td>
+        <td class="r">${fmt(d.rate,1)}%</td>
+        <td>${d.start||'—'} → ${d.end||'∞'}</td>
+        <td class="r pos">${(isF||isO)?fmt(pi,0):'—'}</td>
+        <td class="r pos">${(isF||isO)?fmt(pm,0):'—'}</td>
+        ${isO?`<td class="r pos" style="color:var(--cyan);">${fmt(D.govPremiums.filter(p=>p.depId===d.id).reduce((s,p)=>s+p.amount,0),0)} <button class="btn sm edit" onclick="addGovPremium(${d.id})" title="Добавить гос. премию">+</button></td>`:'<td class="r" style="color:var(--text3);">—</td>'}
+        <td class="r ${lcl}">${left!==null?left:'—'}</td>
+        <td style="font-size:10px;color:var(--text3);">${d.updAt||'—'}</td>
+        <td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editDeposit(${d.id})">✎</button><button class="btn sm del" onclick="delDeposit(${d.id})">✕</button></td>
+      </tr>`;
+    });
+  });
+  tb.innerHTML=html;
+}
+
+// CREDITS
+function addCredit(){
+  const bank=document.getElementById('cr-bank').value.trim(),total=safeNum('cr-total'),rest=safeNum('cr-rest');
+  const pay=safeNum('cr-pay')||0,rate=safeNum('cr-rate')||0,end=document.getElementById('cr-end').value,type=document.getElementById('cr-type').value;
+  if(!bank||isNaN(total)||isNaN(rest)){alert('Заполните обязательные поля');return;}
+  D.credits.push({id:Date.now(),bank,total,rest,pay,rate,end,type,updAt:td()});
+  save();renderCredits();
+  ['cr-bank','cr-total','cr-rest','cr-pay','cr-rate','cr-end'].forEach(id=>document.getElementById(id).value='');
+}
+function editCredit(id){
+  const c=D.credits.find(x=>x.id===id);if(!c)return;
+  const html=`<div class="form-row c3">${mF('Банк','bank',c.bank)}${mF('Тип','type',c.type,null,['Ипотека','Потребительский','Автокредит','Бизнес','Другое'])}${mF('Начальная','total',c.total,'number')}</div><div class="form-row c3">${mF('Остаток','rest',c.rest,'number')}${mF('Платёж/мес','pay',c.pay,'number')}${mF('Ставка %','rate',c.rate,'number')}</div><div class="form-row">${mF('Дата закрытия','end',c.end,'date')}</div>`;
+  openModal('РЕДАКТИРОВАТЬ КРЕДИТ',html,()=>{c.bank=mv('bank');c.type=mv('type');c.total=mvf('total');c.rest=mvf('rest');c.pay=mvf('pay');c.rate=mvf('rate');c.end=mv('end');c.updAt=td();save();renderCredits();closeModal();});
+}
+function delCredit(id){if(!confirm('Удалить?'))return;D.credits=D.credits.filter(x=>x.id!==id);save();renderCredits();}
+function renderCredits(){
+  const tb=document.getElementById('cr-tbody');
+  if(!D.credits.length){tb.innerHTML='<tr><td colspan="10" class="empty">—</td></tr>';return;}
+  tb.innerHTML=D.credits.map(c=>{
+    const pct=c.total?(((c.total-c.rest)/c.total)*100):0;
+    return`<tr class="rc"><td class="nm">${c.bank}</td><td>${c.type}</td><td class="r">${fmt(c.total,0)}</td><td class="r neg">${fmt(c.rest,0)}</td><td class="r">${fmt(c.pay,0)}</td><td class="r">${fmt(c.rate,1)}%</td><td>${c.end||'—'}</td><td class="r"><div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;min-width:50px;"><div class="pw" style="margin:0;"><div class="pb-bar green" style="width:${Math.min(pct,100)}%"></div></div></div><span style="font-size:10px;color:var(--text2)">${fmt(pct,0)}%</span></div></td><td style="font-size:10px;color:var(--text3);">${c.updAt||'—'}</td><td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editCredit(${c.id})">✎</button><button class="btn sm del" onclick="delCredit(${c.id})">✕</button></td></tr>`;
+  }).join('');
+}
+
+// ASSETS
+function addAsset(){
+  const name=document.getElementById('ast-name').value.trim(),type=document.getElementById('ast-type').value,cat=document.getElementById('ast-cat').value;
+  const buy=safeNum('ast-buy'),year=document.getElementById('ast-year').value,cur2=document.getElementById('ast-cur2').value,status=document.getElementById('ast-status').value;
+  if(!name||isNaN(buy)){alert('Заполните название и цену');return;}
+  D.assets.push({id:Date.now(),name,type,cat,buy,year,cur2,status,salePrice:null});
+  save();renderAssets();
+  ['ast-name','ast-buy','ast-year'].forEach(id=>document.getElementById(id).value='');
+}
+function editAsset(id){
+  const a=D.assets.find(x=>x.id===id);if(!a)return;
+  const html=`<div class="form-row c3">${mF('Название','name',a.name)}${mF('Тип','type',a.type,null,['Недвижимость','Автомобиль','Земля','Бизнес','Прочее'])}${mF('Категория','cat',a.cat,null,['income','base'])}</div><div class="form-row c3">${mF('Цена покупки','buy',a.buy,'number')}${mF('Цена продажи','sale',a.salePrice,'number')}${mF('Год','year',a.year,'number')}</div><div class="form-row c2">${mF('Статус','status',a.status,null,['Владею','Сдаю в аренду','Продаю','Продан'])}${mF('Валюта','cur2',a.cur2,null,['KZT','USD'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ АКТИВ',html,()=>{a.name=mv('name');a.type=mv('type');a.cat=mv('cat');a.buy=mvf('buy');a.salePrice=mv('sale')?mvf('sale'):null;a.year=mv('year');a.status=mv('status');a.cur2=mv('cur2');save();renderAssets();closeModal();});
+}
+function delAsset(id){if(!confirm('Удалить?'))return;D.assets=D.assets.filter(x=>x.id!==id);save();renderAssets();}
+function astRows(items){
+  if(!items.length)return'<tr><td colspan="9" class="empty">—</td></tr>';
+  return items.map(a=>{
+    const sold=a.salePrice!=null&&!isNaN(a.salePrice),profit=sold?a.salePrice-a.buy:null;
+    const cl=profit===null?'':profit>=0?'pos':'neg',rc=a.cat==='income'?'ri':'rr';
+    return`<tr class="${rc}"><td class="nm">${a.name}</td><td>${a.type}</td><td class="r">${fmt(a.buy,0)}</td><td class="r">${sold?fmt(a.salePrice,0):'—'}</td><td class="r ${cl}">${sold?(profit>=0?'+':'')+fmt(profit,0):'—'}</td><td>${a.year||'—'}</td><td>${a.status}</td><td>${a.cur2}</td><td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editAsset(${a.id})">✎</button><button class="btn sm del" onclick="delAsset(${a.id})">✕</button></td></tr>`;
+  }).join('');
+}
+function renderAssets(){
+  document.getElementById('ast-inc-tbody').innerHTML=astRows(D.assets.filter(a=>a.cat==='income'));
+  document.getElementById('ast-base-tbody').innerHTML=astRows(D.assets.filter(a=>a.cat==='base'||!a.cat));
+}
+
+// INCOME
+function addIncome(){
+  const type=document.getElementById('inc-type').value,sum=safeNum('inc-sum'),date=document.getElementById('inc-date').value,cur=document.getElementById('inc-cur').value,desc=document.getElementById('inc-desc').value.trim();
+  const depLink=document.getElementById('inc-dep-link').value||null;
+  if(isNaN(sum)||!date){alert('Заполните сумму и дату');return;}
+  D.income.push({id:Date.now(),type,sum,date,cur,desc,depLink});
+  // If deposit linked — add to deposit balance
+  if(depLink){
+    const dep=D.deposits.find(d=>String(d.id)===String(depLink));
+    if(dep){dep.sum+=sum;dep.updAt=td();}
+  }
+  save();renderIncome();if(depLink)renderDeposits();
+  ['inc-sum','inc-date','inc-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inc-dep-link').value='';
+}
+function updIncomeDepDropdown(){
+  const sel=document.getElementById('inc-dep-link');if(!sel)return;
+  sel.innerHTML='<option value="">— не направлять —</option>'+D.deposits.map(d=>`<option value="${d.id}">${d.bank} (${fmt(d.sum,0)} ${d.cur})</option>`).join('');
+}
+function editIncome(id){
+  const i=D.income.find(x=>x.id===id);if(!i)return;
+  const html=`<div class="form-row c2">${mF('Тип','type',i.type,null,['Зарплата','ИП','Аренда','Дивиденды','Прочее'])}${mF('Сумма','sum',i.sum,'number')}</div><div class="form-row c2">${mF('Дата','date',i.date,'date')}${mF('Валюта','cur',i.cur,null,['KZT','USD','RUB'])}</div><div class="form-row">${mF('Описание','desc',i.desc)}</div>`;
+  openModal('РЕДАКТИРОВАТЬ ДОХОД',html,()=>{i.type=mv('type');i.sum=mvf('sum');i.date=mv('date');i.cur=mv('cur');i.desc=mv('desc');save();renderIncome();closeModal();});
+}
+function delIncome(id){if(!confirm('Удалить?'))return;D.income=D.income.filter(x=>x.id!==id);save();renderIncome();}
+function sortIncome(mode,el){incSort=mode;document.querySelectorAll('.st').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderIncome();}
+function incRow(i){
+  const rc=i.type==='Зарплата'||i.type==='ИП'?'ri':'';
+  return`<tr class="${rc}"><td class="tk">${i.type}</td><td>${i.desc||'—'}</td><td class="r pos">${fmt(i.sum,0)}</td><td>${i.date}</td><td>${i.cur}</td><td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editIncome(${i.id})">✎</button><button class="btn sm del" onclick="delIncome(${i.id})">✕</button></td></tr>`;
+}
+function renderIncome(){
+  const tb=document.getElementById('inc-tbody');
+  if(!D.income.length){tb.innerHTML='<tr><td colspan="6" class="empty">—</td></tr>';return;}
+  let s=[...D.income];
+  if(incSort==='date')s.sort((a,b)=>b.date.localeCompare(a.date));
+  else if(incSort==='type')s.sort((a,b)=>a.type.localeCompare(b.type)||b.date.localeCompare(a.date));
+  else if(incSort==='amount')s.sort((a,b)=>b.sum-a.sum);
+  else s.sort((a,b)=>b.date.slice(0,7).localeCompare(a.date.slice(0,7))||b.date.localeCompare(a.date));
+  let html='';
+  if(incSort==='type'){
+    const g={};s.forEach(i=>{if(!g[i.type])g[i.type]=[];g[i.type].push(i);});
+    Object.keys(g).forEach(t=>{const tot=g[t].reduce((x,i)=>x+i.sum,0);html+=`<tr><td colspan="6" style="background:var(--bg4);color:var(--blue);font-size:10px;letter-spacing:1px;padding:6px 10px;font-family:var(--mono);">▸ ${t} — ${fmt(tot,0)}</td></tr>`;g[t].forEach(i=>html+=incRow(i));});
+  } else if(incSort==='month'){
+    const g={};s.forEach(i=>{const m=i.date.slice(0,7);if(!g[m])g[m]=[];g[m].push(i);});
+    Object.keys(g).sort((a,b)=>b.localeCompare(a)).forEach(m=>{const tot=g[m].reduce((x,i)=>x+i.sum,0);html+=`<tr><td colspan="6" style="background:var(--bg4);color:var(--gold);font-size:10px;letter-spacing:1px;padding:6px 10px;font-family:var(--mono);">▸ ${m} — ${fmt(tot,0)}</td></tr>`;g[m].forEach(i=>html+=incRow(i));});
+  } else s.forEach(i=>html+=incRow(i));
+  tb.innerHTML=html;
+}
+
+// EXPENSES
+function updateSubcat(){document.getElementById('subcat-wrap').style.display=document.getElementById('exp-cat').value==='Личный транспорт'?'flex':'none';}
+function addExpense(){
+  const cat=document.getElementById('exp-cat').value,subcat=cat==='Личный транспорт'?document.getElementById('exp-subcat').value:'';
+  const sum=safeNum('exp-sum'),date=document.getElementById('exp-date').value,cur=document.getElementById('exp-cur').value,desc=document.getElementById('exp-desc').value.trim();
+  if(isNaN(sum)||!date){alert('Заполните сумму и дату');return;}
+  D.expenses.push({id:Date.now(),cat,subcat,sum,date,cur,desc});
+  save();renderExpenses();renderExpAnalytics();
+  ['exp-sum','exp-date','exp-desc'].forEach(id=>document.getElementById(id).value='');
+}
+function editExpense(id){
+  const e=D.expenses.find(x=>x.id===id);if(!e)return;
+  const cats=['Продукты','Коммунальные','Личный транспорт','Рестораны','Одежда','Здоровье','Образование','Развлечения','Дети','Путешествия','Связь','Разное'];
+  const sc=['Бензин','Мойка','Техобслуживание','Запчасти','Штрафы','Парковка','Прочее'];
+  const html=`<div class="form-row c2">${mF('Категория','cat',e.cat,null,cats)}${mF('Подкатегория','subcat',e.subcat,null,sc)}</div><div class="form-row c2">${mF('Сумма','sum',e.sum,'number')}${mF('Дата','date',e.date,'date')}</div><div class="form-row c2">${mF('Валюта','cur',e.cur,null,['KZT','USD'])}${mF('Описание','desc',e.desc)}</div>`;
+  openModal('РЕДАКТИРОВАТЬ РАСХОД',html,()=>{e.cat=mv('cat');e.subcat=mv('subcat');e.sum=mvf('sum');e.date=mv('date');e.cur=mv('cur');e.desc=mv('desc');save();renderExpenses();renderExpAnalytics();closeModal();});
+}
+function delExpense(id){if(!confirm('Удалить?'))return;D.expenses=D.expenses.filter(x=>x.id!==id);save();renderExpenses();renderExpAnalytics();}
+function renderExpenses(){
+  const tb=document.getElementById('exp-tbody');
+  if(!D.expenses.length){tb.innerHTML='<tr><td colspan="7" class="empty">—</td></tr>';renderExpCharts();return;}
+  const s=[...D.expenses].sort((a,b)=>b.date.localeCompare(a.date));
+  const cc=['Коммунальные','Налог на транспорт'],ic=['Здоровье','Личный транспорт','Образование','Подписки'];
+  tb.innerHTML=s.map(e=>{const rc=cc.includes(e.cat)?'rc':ic.includes(e.cat)?'ri':'';const srcBadge=e.source?`<span class="badge grey" style="margin-left:4px;font-size:8px;">${e.source}</span>`:'';return`<tr class="${rc}"><td class="tk">${e.cat}</td><td>${e.subcat||'—'}</td><td>${e.desc||'—'}${srcBadge}</td><td class="r neg">${fmt(e.sum,0)}</td><td>${e.date}</td><td>${e.cur}</td><td style="display:flex;gap:4px;">${e.source?'':'<button class="btn sm edit" onclick="editExpense('+e.id+')">✎</button>'}<button class="btn sm del" onclick="delExpense(${e.id})">✕</button></td></tr>`;}).join('');
+  renderExpCharts();
+}
+function renderExpCharts(){
+  const ymN=ymOf();const tm=D.expenses.filter(e=>e.date.slice(0,7)===ymN);
+  if(tm.length){const by={};tm.forEach(e=>{const k=e.cat+(e.subcat?'/'+e.subcat:'');by[k]=(by[k]||0)+e.sum;});const lb=Object.keys(by),dt=lb.map(k=>by[k]),bg=lb.map((_,i)=>CLR[i%CLR.length]);mkChart('c-exp-pie','doughnut',{labels:lb,datasets:[{data:dt,backgroundColor:bg,borderColor:'#070b12',borderWidth:2}]},{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}});}
+  const bm={};D.expenses.forEach(e=>{const m=e.date.slice(0,7);bm[m]=(bm[m]||0)+e.sum;});
+  const ms=Object.keys(bm).sort().slice(-6);
+  if(ms.length){const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};mkChart('c-exp-bar','bar',{labels:ms,datasets:[{data:ms.map(m=>bm[m]),backgroundColor:'rgba(240,82,82,0.6)',borderColor:'#f05252',borderWidth:1}]},base);}
+}
+function byCat(m){const r={};D.expenses.filter(e=>e.date.slice(0,7)===m).forEach(e=>{r[e.cat]=(r[e.cat]||0)+e.sum;});return r;}
+function renderExpAnalytics(){
+  const now=new Date(),ymN=ymOf();
+  const m3=[];for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);m3.push(ymOf(d));}
+  const prev=m3[1],curr=byCat(ymN),prevC=byCat(prev);
+  const avg3={};m3.forEach(m=>{const b=byCat(m);Object.keys(b).forEach(k=>{avg3[k]=(avg3[k]||0)+b[k]/3;});});
+  // Anomalies
+  const ab=document.getElementById('anom-body');
+  const allC=[...new Set([...Object.keys(curr),...Object.keys(avg3)])];
+  const anoms=allC.map(cat=>{const c=curr[cat]||0,a=avg3[cat]||0;if(a===0)return null;const d=((c-a)/a)*100;return{cat,c,a,d};}).filter(x=>x&&Math.abs(x.d)>=20).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+  ab.innerHTML=anoms.length?anoms.map(a=>{const up=a.d>0,cl=up?'up':'dn',col=up?'var(--red)':'var(--green)',ic=up?'▲':'▼';return`<div class="anom-item ${cl}"><div><div style="font-size:12px;color:var(--text);">${a.cat}</div><div style="font-size:10px;font-family:var(--mono);color:var(--text3);">Ср. за 3 мес: ${fmt(a.a,0)} тг</div></div><div style="font-family:var(--mono);font-size:12px;color:${col};">${ic} ${fmt(Math.abs(a.d),0)}% | ${fmt(a.c,0)} тг</div></div>`;}).join(''):'<div class="empty">Аномалий не обнаружено</div>';
+  // MTM
+  const mb=document.getElementById('mtm-body');
+  if(!Object.keys(prevC).length){mb.innerHTML='<div class="empty">Нет данных за прошлый месяц</div>';return;}
+  const totC=Object.values(curr).reduce((s,v)=>s+v,0),totP=Object.values(prevC).reduce((s,v)=>s+v,0),totD=totP?((totC-totP)/totP)*100:0;
+  let html=`<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+    <div class="ins-block" style="flex:1;min-width:160px;"><div class="ins-title">ЭТОТ МЕСЯЦ</div><div style="font-size:20px;font-family:var(--mono);color:var(--text);">${fmt(totC,0)}</div></div>
+    <div class="ins-block" style="flex:1;min-width:160px;"><div class="ins-title">ПРОШЛЫЙ МЕСЯЦ</div><div style="font-size:20px;font-family:var(--mono);color:var(--text2);">${fmt(totP,0)}</div></div>
+    <div class="ins-block" style="flex:1;min-width:160px;"><div class="ins-title">ИЗМЕНЕНИЕ</div><div style="font-size:20px;font-family:var(--mono);" class="${totD>0?'neg':'pos'}">${totD>=0?'+':''}${fmt(totD,1)}%</div></div>
+  </div><div class="tbl-w"><table><thead><tr><th>КАТЕГОРИЯ</th><th class="r">ПРОШЛЫЙ МЕС</th><th class="r">ЭТОТ МЕС</th><th class="r">ИЗМЕНЕНИЕ</th><th class="r">%</th></tr></thead><tbody>`;
+  const allM=[...new Set([...Object.keys(curr),...Object.keys(prevC)])];
+  allM.forEach(cat=>{const c=curr[cat]||0,p=prevC[cat]||0,d=c-p,dp=p?(d/p)*100:0;const cl=d>0?'neg':'pos',rc=d>0&&dp>30?'rc':d>0?'ri':'';html+=`<tr class="${rc}"><td class="tk">${cat}</td><td class="r">${fmt(p,0)}</td><td class="r">${fmt(c,0)}</td><td class="r ${cl}">${d>=0?'+':''}${fmt(d,0)}</td><td class="r ${cl}">${d>=0?'+':''}${fmt(dp,1)}%</td></tr>`;});
+  mb.innerHTML=html+'</tbody></table></div>';
+}
+
+// RENT
+function addRent(){
+  const addr=document.getElementById('rent-addr').value.trim(),tenant=document.getElementById('rent-tenant').value.trim(),sum=safeNum('rent-sum'),start=document.getElementById('rent-start').value,end=document.getElementById('rent-end').value,cur=document.getElementById('rent-cur').value;
+  const propIdEl=document.getElementById('rent-prop-link');
+  const propId=propIdEl?propIdEl.value||null:null;
+  if(!addr||isNaN(sum)){alert('Заполните адрес и сумму');return;}
+  D.rent.push({id:Date.now(),addr,tenant,sum,start,end,cur,propId});
+  save();renderRent();['rent-addr','rent-tenant','rent-sum','rent-start','rent-end'].forEach(id=>document.getElementById(id).value='');
+  if(propIdEl)propIdEl.value='';
+}
+function recordRentPayment(id){
+  const r=D.rent.find(x=>x.id===id);if(!r)return;
+  D.income.push({id:Date.now(),type:'Аренда',sum:r.sum,date:td(),cur:r.cur,desc:'Аренда — '+r.addr});
+  save();renderIncome();alert('Платёж зафиксирован: '+fmt(r.sum,0)+' '+r.cur);
+}
+function updRentPropDropdown(){
+  const sel=document.getElementById('rent-prop-link');if(!sel)return;
+  sel.innerHTML='<option value="">— без привязки —</option>'+D.properties.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+}
+function editRent(id){
+  const r=D.rent.find(x=>x.id===id);if(!r)return;
+  const html=`<div class="form-row c2">${mF('Адрес','addr',r.addr)}${mF('Арендатор','tenant',r.tenant)}</div><div class="form-row c3">${mF('Сумма/мес','sum',r.sum,'number')}${mF('Начало','start',r.start,'date')}${mF('Окончание','end',r.end,'date')}</div><div class="form-row">${mF('Валюта','cur',r.cur,null,['KZT','USD'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ АРЕНДУ',html,()=>{r.addr=mv('addr');r.tenant=mv('tenant');r.sum=mvf('sum');r.start=mv('start');r.end=mv('end');r.cur=mv('cur');save();renderRent();closeModal();});
+}
+function delRent(id){if(!confirm('Удалить?'))return;D.rent=D.rent.filter(x=>x.id!==id);save();renderRent();}
+function renderRent(){
+  const tb=document.getElementById('rent-tbody');
+  if(!D.rent.length){tb.innerHTML='<tr><td colspan="8" class="empty">—</td></tr>';return;}
+  const propMap={};D.properties.forEach(p=>{propMap[p.id]=p.name;});
+  tb.innerHTML=D.rent.map(r=>{const left=r.end?daysLeft(r.end):null,cl=left===null?'':left<30?'neg':left<90?'tk':'pos',rc=left!==null&&left<30?'rc':'ri';return`<tr class="${rc}"><td class="nm">${r.addr}</td><td>${r.tenant||'—'}</td><td class="r pos">${fmt(r.sum,0)}</td><td>${r.start||'—'}</td><td>${r.end||'—'}</td><td class="r ${cl}">${left!==null?left:'—'}</td><td>${r.cur}</td><td style="font-size:10px;color:var(--blue);">${r.propId&&propMap[r.propId]?propMap[r.propId]:'—'}</td><td style="display:flex;gap:4px;"><button class="btn sm grn" onclick="recordRentPayment(${r.id})" title="Получил оплату">✓</button><button class="btn sm edit" onclick="editRent(${r.id})">✎</button><button class="btn sm del" onclick="delRent(${r.id})">✕</button></td></tr>`;}).join('');
+}
+
+// GOALS
+function addGoal(){
+  const name=document.getElementById('goal-name').value.trim(),target=safeNum('goal-target'),saved=safeNum('goal-saved')||0,date=document.getElementById('goal-date').value,cur=document.getElementById('goal-cur').value;
+  const depId=document.getElementById('goal-dep').value||null;
+  const monthlyContrib=safeNum('goal-mc')||0;
+  if(!name||isNaN(target)){alert('Заполните название и цель');return;}
+  D.goals.push({id:Date.now(),name,target,saved,date,cur,depId,monthlyContrib});save();renderGoals();
+  ['goal-name','goal-target','goal-saved','goal-date'].forEach(id=>document.getElementById(id).value='');
+}
+function editGoal(id){
+  const g=D.goals.find(x=>x.id===id);if(!g)return;
+  const depOpts='<option value="">— без привязки —</option>'+D.deposits.map(d=>`<option value="${d.id}"${String(d.id)===String(g.depId)?' selected':''}>${d.bank} (${fmt(d.sum,0)} ${d.cur})</option>`).join('');
+  const html=`<div class="form-row c2">${mF('Название','name',g.name)}${mF('Цель','target',g.target,'number')}</div><div class="form-row c2">${mF('Накоплено','saved',g.saved,'number')}${mF('Дата','date',g.date,'date')}</div><div class="form-row c3">${mF('Валюта','cur',g.cur,null,['KZT','USD'])}${mF('Ежемес. взнос','mc',g.monthlyContrib||0,'number')}<div class="f"><label>ДЕПОЗИТ</label><select id="m-dep">${depOpts}</select></div></div>`;
+  openModal('РЕДАКТИРОВАТЬ ЦЕЛЬ',html,()=>{g.name=mv('name');g.target=mvf('target');g.saved=mvf('saved');g.date=mv('date');g.cur=mv('cur');g.monthlyContrib=mvf('mc')||0;g.depId=mv('dep')||null;save();renderGoals();closeModal();});
+}
+function delGoal(id){if(!confirm('Удалить?'))return;D.goals=D.goals.filter(x=>x.id!==id);save();renderGoals();}
+function updGoal(id,v){const g=D.goals.find(x=>x.id===id);if(g&&!g.depId){g.saved=parseFloat(v)||0;save();renderGoals();}}
+function renderGoals(){
+  const list=document.getElementById('goals-list');
+  if(!D.goals.length){list.innerHTML='<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:11px;">Цели не добавлены</div>';return;}
+  const now=new Date();
+  const m3=[];for(let i=2;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);m3.push(ymOf(d));}
+  const avgInc=m3.reduce((s,m)=>s+D.income.filter(i=>i.date.slice(0,7)===m).reduce((ss,i)=>ss+i.sum,0),0)/3;
+  const avgExp=m3.reduce((s,m)=>s+D.expenses.filter(e=>e.date.slice(0,7)===m).reduce((ss,e)=>ss+e.sum,0),0)/3;
+  const mSave=avgInc-avgExp;
+  list.innerHTML=D.goals.map(g=>{
+    const dep=g.depId?D.deposits.find(d=>String(d.id)===String(g.depId)):null;
+    const effectiveSaved=dep?dep.sum:g.saved;
+    const pct=g.target?(Math.min(effectiveSaved/g.target,1)*100):0,left=g.target-effectiveSaved,bc=pct>=100?'green':pct>=50?'gold':'blue',dl=g.date?daysLeft(g.date):'';
+    const mLeft=mSave>0?Math.ceil(left/mSave):null;
+    const mc=g.monthlyContrib||0;
+    const mLeftDep=dep&&mc>0?Math.ceil(left/mc):mLeft;
+    return`<div class="goal-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);">${g.name}</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:3px;">
+            ${g.date?'До: '+g.date+(dl!==''?' ('+dl+' дн.)':''):''} • ${g.cur}
+            ${mLeftDep?` • При текущем темпе: ~${mLeftDep} мес.`:''}
+            ${dep?` • Депозит: <span style="color:var(--blue);">${dep.bank}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editGoal(${g.id})">✎</button><button class="btn sm del" onclick="delGoal(${g.id})">✕</button></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">НАКОПЛЕНО</div><div style="font-size:14px;font-family:var(--mono);color:var(--green);">${fmt(effectiveSaved,0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ЦЕЛЬ</div><div style="font-size:14px;font-family:var(--mono);color:var(--gold);">${fmt(g.target,0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ОСТАЛОСЬ</div><div style="font-size:14px;font-family:var(--mono);color:var(--red);">${fmt(Math.max(left,0),0)}</div></div>
+        <div style="background:var(--bg5);padding:8px;border:1px solid var(--border);"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:3px;">ПРОГРЕСС</div><div style="font-size:14px;font-family:var(--mono);color:var(--text);">${fmt(pct,1)}%</div></div>
+      </div>
+      <div class="pw"><div class="pb-bar ${bc}" style="width:${pct}%"></div></div>
+      ${mc>0?`<div style="margin-top:6px;font-size:10px;font-family:var(--mono);color:var(--text3);">Ежемесячный взнос: <span style="color:var(--gold);">${fmt(mc,0)} ${g.cur}</span></div>`:''}
+      ${dep?`<div style="margin-top:8px;font-size:10px;font-family:var(--mono);color:var(--imp);padding:6px 8px;background:var(--imp-bg);border:1px solid var(--imp-bdr);">📎 Привязан к депозиту: ${dep.bank} — ${fmt(dep.sum,0)} ${dep.cur}</div>`:
+      `<div style="margin-top:10px;display:flex;gap:8px;align-items:center;"><label style="font-size:10px;font-family:var(--mono);color:var(--text3);">ОБНОВИТЬ:</label><input type="number" value="${effectiveSaved}" style="background:var(--bg5);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;outline:none;width:130px;" onchange="updGoal(${g.id},this.value)"></div>`}
+    </div>`;
+  }).join('');
+}
+
+// ENPF
+function saveEnpf(){
+  const balance=safeNum('enpf-bal'),threshold=safeNum('enpf-thr'),date=document.getElementById('enpf-date').value||td(),note=document.getElementById('enpf-note').value.trim();
+  if(isNaN(balance)){alert('Введите остаток');return;}
+  D.enpf.push({id:Date.now(),balance,threshold,date,note});save();renderEnpf();
+}
+function delEnpf(id){D.enpf=D.enpf.filter(x=>x.id!==id);save();renderEnpf();}
+function renderEnpf(){
+  const last=D.enpf.length?D.enpf[D.enpf.length-1]:null;
+  const st=document.getElementById('enpf-stats');
+  if(last){const pct=last.threshold?(Math.min(last.balance/last.threshold,1)*100):0,left=last.threshold?Math.max(last.threshold-last.balance,0):0,bc=pct>=100?'green':pct>=70?'gold':'blue';st.innerHTML=`<div class="enp-s"><div class="enp-l">ОСТАТОК</div><div class="enp-v">${fmt(last.balance,0)} тг</div><div class="kpi-upd">Обновлено: ${last.date}</div></div><div class="enp-s"><div class="enp-l">ПОРОГ СНЯТИЯ</div><div class="enp-v" style="color:var(--blue)">${fmt(last.threshold,0)} тг</div></div><div class="enp-s"><div class="enp-l">ПРОГРЕСС</div><div style="font-size:20px;font-family:var(--mono);color:${pct>=100?'var(--green)':'var(--text)'};">${fmt(pct,1)}%</div><div class="pw"><div class="pb-bar ${bc}" style="width:${Math.min(pct,100)}%"></div></div><div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:4px;">До порога: <span style="color:var(--red)">${fmt(left,0)} тг</span></div>${pct>=100?'<div style="margin-top:6px;"><span class="badge green">✓ МОЖНО СНЯТЬ</span></div>':''}</div>`;}
+  else st.innerHTML='<div class="empty">Внесите данные</div>';
+  const tb=document.getElementById('enpf-tbody');
+  if(!D.enpf.length){tb.innerHTML='<tr><td colspan="6" class="empty">—</td></tr>';return;}
+  const s=[...D.enpf].sort((a,b)=>b.date.localeCompare(a.date));
+  tb.innerHTML=s.map(e=>`<tr><td>${e.date}</td><td class="r pos">${fmt(e.balance,0)}</td><td class="r">${fmt(e.threshold,0)}</td><td class="r neg">${fmt(Math.max((e.threshold||0)-e.balance,0),0)}</td><td>${e.note||'—'}</td><td><button class="btn sm del" onclick="delEnpf(${e.id})">✕</button></td></tr>`).join('');
+}
+
+// INSURANCE
+function toggleInsObj(){
+  // Could hide/show fields based on type in future
+}
+function updInsCarDropdown(){
+  const sel=document.getElementById('ins-car-link');if(!sel)return;
+  sel.innerHTML='<option value="">— не авто —</option>'+D.cars.map(c=>`<option value="${c.id}">${c.make} ${c.model} ${c.year||''} ${c.plate||''}</option>`).join('');
+}
+function addInsurance(){
+  const type=document.getElementById('ins-type').value;
+  const comp=document.getElementById('ins-comp').value.trim();
+  const carId=document.getElementById('ins-car-link').value||null;
+  const carObj=carId?D.cars.find(c=>String(c.id)===String(carId)):null;
+  const objInput=document.getElementById('ins-obj').value.trim();
+  const obj=carObj?(carObj.make+' '+carObj.model+(carObj.plate?' ('+carObj.plate+')':'')):objInput;
+  const cover=safeNum('ins-cover')||0;
+  const prem=safeNum('ins-prem')||0;
+  const start=document.getElementById('ins-start').value;
+  const end=document.getElementById('ins-end').value;
+  if(!obj){alert('Укажите объект страхования или выберите автомобиль');return;}
+  if(!end){alert('Укажите дату окончания');return;}
+  const insId=Date.now();
+  D.insurance.push({id:insId,obj,comp,type,cover,prem,start,end,carId:carId?parseInt(carId):null});
+  // Auto-create expense
+  if(prem>0){
+    D.expenses.push({id:insId+1,cat:'Страховка',subcat:type,sum:prem,date:start||td(),cur:'KZT',desc:type+' — '+obj,source:'insurance'});
+  }
+  save();renderInsurance();renderExpenses();updInsCarDropdown();
+  ['ins-obj','ins-comp','ins-cover','ins-prem','ins-start','ins-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+function editInsurance(id){
+  const i=D.insurance.find(x=>x.id===id);if(!i)return;
+  const html=`<div class="form-row c3">${mF('Объект','obj',i.obj)}${mF('Компания','comp',i.comp)}${mF('Тип','type',i.type,null,['КАСКО','ОГПО','Имущество','Жизнь','Здоровье','Другое'])}</div><div class="form-row c3">${mF('Покрытие','cover',i.cover,'number')}${mF('Стоимость','prem',i.prem,'number')}${mF('Окончание','end',i.end,'date')}</div>`;
+  openModal('РЕДАКТИРОВАТЬ СТРАХОВКУ',html,()=>{i.obj=mv('obj');i.comp=mv('comp');i.type=mv('type');i.cover=mvf('cover');i.prem=mvf('prem');i.end=mv('end');save();renderInsurance();closeModal();});
+}
+function delInsurance(id){if(!confirm('Удалить?'))return;D.insurance=D.insurance.filter(x=>x.id!==id);save();renderInsurance();}
+function renderInsurance(){
+  const tb=document.getElementById('ins-tbody'),panel=document.getElementById('ins-tbl-panel');
+  if(!D.insurance.length){tb.innerHTML='<tr><td colspan="9" class="empty">—</td></tr>';return;}
+  let hasCrit=false;
+  tb.innerHTML=D.insurance.map(i=>{
+    const left=daysLeft(i.end),exp=left<0,soon=left<30;
+    if(exp||soon)hasCrit=true;
+    const badge=exp?'<span class="badge red">ИСТЕКЛА</span>':soon?`<span class="badge red">${left} дн.</span>`:left<90?`<span class="badge gold">${left} дн.</span>`:'<span class="badge green">АКТИВНА</span>';
+    const rc=exp||soon?'rc':left<90?'ri':'';
+    const carLink=i.carId?D.cars.find(c=>c.id===i.carId):null;
+    const objLabel=carLink?`🚗 ${carLink.make} ${carLink.model}`:i.obj;
+    return`<tr class="${rc}">
+      <td class="nm">${objLabel}</td>
+      <td>${i.type}</td>
+      <td>${i.comp||'—'}</td>
+      <td style="font-size:10px;color:var(--text3);">${i.start||'—'}</td>
+      <td>${i.end}</td>
+      <td class="r">${fmt(i.cover,0)}</td>
+      <td class="r">${fmt(i.prem,0)}</td>
+      <td>${badge}</td>
+      <td style="display:flex;gap:4px;"><button class="btn sm edit" onclick="editInsurance(${i.id})">✎</button><button class="btn sm del" onclick="delInsurance(${i.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+  panel.className=hasCrit?'panel crit':'panel';
+}
+
+// SUBS
+function paySubNow(id){
+  const s=D.subs.find(x=>x.id===id);if(!s)return;
+  const date=td();
+  D.expenses.push({id:Date.now(),cat:'Подписки',subcat:s.cat,sum:s.sum,date,cur:s.cur,desc:s.name,source:'subscription',subId:id});
+  save();renderSubs();renderExpenses();
+  alert('Платёж зафиксирован: '+s.name+' — '+fmt(s.sum,0)+' '+s.cur);
+}
+function addSub(){
+  const name=document.getElementById('sub-name').value.trim(),sum=safeNum('sub-sum'),day=parseInt(document.getElementById('sub-day').value)||1,cur=document.getElementById('sub-cur').value,cat=document.getElementById('sub-cat').value;
+  if(!name||isNaN(sum)){alert('Заполните название и сумму');return;}
+  D.subs.push({id:Date.now(),name,sum,day,cur,cat});save();renderSubs();
+  ['sub-name','sub-sum','sub-day'].forEach(id=>document.getElementById(id).value='');
+}
+function editSub(id){
+  const s=D.subs.find(x=>x.id===id);if(!s)return;
+  const html=`<div class="form-row c2">${mF('Название','name',s.name)}${mF('Сумма/мес','sum',s.sum,'number')}</div><div class="form-row c3">${mF('День','day',s.day,'number')}${mF('Валюта','cur',s.cur,null,['KZT','USD'])}${mF('Категория','cat',s.cat,null,['Развлечения','Связь','Работа','Здоровье','Другое'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ ПОДПИСКУ',html,()=>{s.name=mv('name');s.sum=mvf('sum');s.day=parseInt(mv('day'))||1;s.cur=mv('cur');s.cat=mv('cat');save();renderSubs();closeModal();});
+}
+function delSub(id){if(!confirm('Удалить?'))return;D.subs=D.subs.filter(x=>x.id!==id);save();renderSubs();}
+function renderSubs(){
+  const list=document.getElementById('sub-list'),tot=document.getElementById('sub-total');
+  if(!D.subs.length){list.innerHTML='<div class="empty">—</div>';tot.innerHTML='';return;}
+  list.innerHTML=D.subs.map(s=>{
+    const payments=D.expenses.filter(e=>e.subId===s.id);
+    const lastPay=payments.length?[...payments].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+    const lastPayStr=lastPay?`<span style="color:var(--text3);font-size:9px;">последний: ${lastPay.date}</span>`:'<span style="color:var(--red);font-size:9px;">не оплачено</span>';
+    return`<div class="sub-item">
+      <div>
+        <div style="font-size:13px;color:var(--text);">${s.name}</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">${s.cat} • ${s.day}-го числа • ${lastPayStr}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-family:var(--mono);font-size:13px;color:var(--text2);">${fmt(s.sum,0)} ${s.cur}/мес</div>
+        <button class="btn sm grn" onclick="paySubNow(${s.id})" title="Зафиксировать платёж">✓ ОПЛАТИЛ</button>
+        <button class="btn sm edit" onclick="editSub(${s.id})">✎</button>
+        <button class="btn sm del" onclick="delSub(${s.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  const kzt=D.subs.filter(s=>s.cur==='KZT').reduce((s,x)=>s+x.sum,0),usd=D.subs.filter(s=>s.cur==='USD').reduce((s,x)=>s+x.sum,0);
+  let t='<span style="color:var(--gold);">ИТОГО/МЕС: </span>';
+  if(kzt)t+=`<span style="color:var(--text);margin-right:12px;">${fmt(kzt,0)} KZT</span>`;
+  if(usd)t+=`<span style="color:var(--text);">${fmt(usd,0)} USD</span>`;
+  tot.innerHTML=t;
+}
+
+// GARAGE
+function addCar(){
+  const make=document.getElementById('car-make').value.trim(),model=document.getElementById('car-model').value.trim(),year=document.getElementById('car-year').value,mileage=safeNum('car-mileage')||0,plate=document.getElementById('car-plate').value.trim();
+  if(!make||!model){alert('Заполните марку и модель');return;}
+  D.cars.push({id:Date.now(),make,model,year,mileage,plate});save();renderGarage();
+  ['car-make','car-model','car-year','car-mileage','car-plate'].forEach(id=>document.getElementById(id).value='');
+}
+function editCar(id){
+  const c=D.cars.find(x=>x.id===id);if(!c)return;
+  const html=`<div class="form-row c2">${mF('Марка','make',c.make)}${mF('Модель','model',c.model)}</div><div class="form-row c3">${mF('Год','year',c.year,'number')}${mF('Пробег (км)','mileage',c.mileage,'number')}${mF('Гос. номер','plate',c.plate)}</div>`;
+  openModal('РЕДАКТИРОВАТЬ АВТО',html,()=>{c.make=mv('make');c.model=mv('model');c.year=mv('year');c.mileage=mvf('mileage');c.plate=mv('plate');save();renderGarage();closeModal();});
+}
+function delCar(id){if(!confirm('Удалить автомобиль и всю историю?'))return;D.cars=D.cars.filter(x=>x.id!==id);D.parts=D.parts.filter(x=>x.carId!==id);save();renderGarage();}
+function openAddPart(cid){currentCarId=cid;const car=D.cars.find(x=>x.id===cid);document.getElementById('add-part-panel').style.display='block';document.getElementById('add-part-title').textContent=`ДОБАВИТЬ ЗАПИСЬ — ${car.make} ${car.model}`;document.getElementById('add-part-panel').scrollIntoView({behavior:'smooth'});}
+function closeAddPart(){document.getElementById('add-part-panel').style.display='none';currentCarId=null;}
+function openAddSvc(cid){
+  currentCarId=cid;
+  const car=D.cars.find(x=>x.id===cid);
+  // Build parts dropdown for linking
+  const carParts=D.parts.filter(p=>p.carId===cid);
+  const pOpts='<option value="">— без запчасти —</option>'+carParts.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('svc-part').innerHTML=pOpts;
+  document.getElementById('add-svc-panel').style.display='block';
+  document.getElementById('add-svc-title').textContent=`ДОБАВИТЬ РАБОТУ — ${car.make} ${car.model}`;
+  document.getElementById('add-svc-panel').scrollIntoView({behavior:'smooth'});
+}
+function closeAddSvc(){document.getElementById('add-svc-panel').style.display='none';}
+function openAddCarIns(cid){
+  const car=D.cars.find(x=>x.id===cid);if(!car)return;
+  const html=`<div class="form-row c2">${mF('Тип','type','КАСКО',null,['КАСКО','ОГПО','Другое'])}${mF('Компания','comp','')}</div><div class="form-row c3">${mF('Сумма покрытия','cover','0','number')}${mF('Стоимость','prem','0','number')}${mF('Дата окончания','end','','date')}</div>`;
+  openModal('СТРАХОВКА — '+car.make+' '+car.model,html,()=>{
+    const obj=car.make+' '+car.model,comp=mv('comp'),type=mv('type'),cover=mvf('cover'),prem=mvf('prem'),end=mv('end');
+    if(!end){alert('Укажите дату окончания');return;}
+    const insId=Date.now();
+    D.insurance.push({id:insId,obj,comp,type,cover,prem,end,carId:cid});
+    if(prem>0){D.expenses.push({id:insId+1,cat:'Личный транспорт',subcat:'Страховка',sum:prem,date:td(),cur:'KZT',desc:type+' '+obj,source:'garage'});}
+    save();renderInsurance();renderGarage();renderExpenses();closeModal();
+  });
+}
+function addPart(){
+  if(!currentCarId){alert('Выберите автомобиль');return;}
+  const name=document.getElementById('part-name').value.trim(),number=document.getElementById('part-number').value.trim(),cat=document.getElementById('part-cat').value;
+  const price=safeNum('part-price')||0,date=document.getElementById('part-date').value,mileage=safeNum('part-mileage')||0;
+  const nextMil=safeNum('part-next-mil')||null,where=document.getElementById('part-where').value.trim(),nextDate=document.getElementById('part-next-date').value;
+  if(!name||!date){alert('Заполните название и дату');return;}
+  D.parts.push({id:Date.now(),carId:currentCarId,name,number,cat,price,date,mileage,nextMil,where,nextDate});
+  const car2=D.cars.find(x=>x.id===currentCarId);if(car2&&mileage>car2.mileage)car2.mileage=mileage;
+  if(price>0){D.expenses.push({id:Date.now()+1,cat:'Личный транспорт',subcat:cat,sum:price,date,cur:'KZT',desc:name+(car2?' — '+car2.make+' '+car2.model:''),source:'garage'});}
+  save();renderGarage();
+  ['part-name','part-number','part-price','part-date','part-mileage','part-next-mil','part-where','part-next-date'].forEach(id=>document.getElementById(id).value='');
+}
+function delPart(id){if(!confirm('Удалить запись?'))return;D.parts=D.parts.filter(x=>x.id!==id);save();renderGarage();}
+function applyStoSvc(){
+  const sel=document.getElementById('svc-where-sel');
+  const inp=document.getElementById('svc-where');
+  if(!sel||!inp)return;
+  if(sel.value&&sel.value!=='__manual')inp.value=sel.value;
+  else if(sel.value==='__manual')inp.value='';
+}
+function addService(){
+  if(!currentCarId){alert('Выберите автомобиль');return;}
+  const desc=document.getElementById('svc-desc').value.trim();
+  const labor=safeNum('svc-labor')||0;
+  const date=document.getElementById('svc-date').value;
+  const mileage=safeNum('svc-mileage')||0;
+  const partId=document.getElementById('svc-part').value||null;
+  const diy=document.getElementById('svc-diy').checked;
+  if(!desc||!date){alert('Заполните описание и дату');return;}
+  const actualLabor=diy?0:labor;
+  D.services.push({id:Date.now(),carId:currentCarId,desc,labor:actualLabor,diy,date,mileage,partId});
+  if(actualLabor>0){
+    const car=D.cars.find(x=>x.id===currentCarId);
+    D.expenses.push({id:Date.now()+2,cat:'Личный транспорт',subcat:'Техобслуживание',sum:actualLabor,date,cur:'KZT',desc:desc+(car?' — '+car.make+' '+car.model:''),source:'garage'});
+    renderExpenses();
+  }
+  const car=D.cars.find(x=>x.id===currentCarId);if(car&&mileage>car.mileage)car.mileage=mileage;
+  save();renderGarage();
+  ['svc-desc','svc-labor','svc-date','svc-mileage'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('svc-diy').checked=false;
+}
+function delService(id){if(!confirm('Удалить?'))return;D.services=D.services.filter(x=>x.id!==id);save();renderGarage();}
+function renderGarage(){
+  const list=document.getElementById('garage-list');
+  if(!D.cars.length){list.innerHTML='<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:11px;">Автомобили не добавлены</div>';return;}
+  list.innerHTML=D.cars.map(car=>{
+    const cp=[...D.parts.filter(p=>p.carId===car.id)].sort((a,b)=>b.date.localeCompare(a.date));
+    const spent=cp.reduce((s,p)=>s+p.price,0);
+    const upcoming=cp.filter(p=>p.nextDate||p.nextMil);
+    let upHtml='';
+    if(upcoming.length){
+      upHtml='<div style="margin-bottom:12px;"><div class="sec-t" style="font-size:9px;">ПРЕДСТОЯЩИЕ ЗАМЕНЫ</div>';
+      upcoming.forEach(p=>{const dl=p.nextDate?daysLeft(p.nextDate):null,ml=p.nextMil?(p.nextMil-car.mileage):null,soon=(dl!==null&&dl<30)||(ml!==null&&ml<2000),badge=soon?'<span class="badge red">СКОРО</span>':'<span class="badge gold">ПЛАН</span>';upHtml+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--mono);"><span style="color:var(--text);">${p.name}</span><span style="color:var(--text3);">${p.nextDate?'до '+p.nextDate:''} ${ml!==null?'/ ещё '+fmt(ml,0)+' км':''} ${badge}</span></div>`;});
+      upHtml+='</div>';
+    }
+    const partsHtml=cp.length?`<div class="tbl-w"><table><thead><tr><th>НАЗВАНИЕ</th><th>НОМЕР ЗАПЧАСТИ</th><th>КАТЕГОРИЯ</th><th class="r">ЦЕНА</th><th>ДАТА</th><th class="r">ПРОБЕГ</th><th>ГДЕ</th><th>СЛЕД. ЗАМЕНА</th><th></th></tr></thead><tbody>${cp.map(p=>`<tr><td class="nm">${p.name}</td><td style="font-family:var(--mono);color:var(--cyan);font-size:11px;">${p.number||'—'}</td><td>${p.cat}</td><td class="r">${fmt(p.price,0)}</td><td>${p.date}</td><td class="r">${p.mileage?fmt(p.mileage,0)+' км':'—'}</td><td>${p.where||'—'}</td><td style="font-size:10px;color:var(--text3);">${p.nextDate||''} ${p.nextMil?fmt(p.nextMil,0)+' км':''}</td><td><button class="btn sm del" onclick="delPart(${p.id})">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">История пуста</div>';
+    // Car insurance - display only from main Insurance section
+    const carIns=D.insurance.filter(i=>String(i.carId)===String(car.id));
+    const insHtml=carIns.length?`<div style="margin-bottom:12px;background:var(--imp-bg);border:1px solid var(--imp-bdr);padding:10px;"><div class="sec-t" style="font-size:9px;color:var(--imp);">СТРАХОВКИ АВТО</div>${carIns.map(i=>{const left=daysLeft(i.end);const badge=left<0?'<span class="badge red">ИСТЕКЛА</span>':left<30?`<span class="badge red">${left} дн.</span>`:left<90?`<span class="badge gold">${left} дн.</span>`:'<span class="badge green">АКТИВНА</span>';return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(59,140,248,0.15);font-size:11px;font-family:var(--mono);"><span style="color:var(--text);">${i.type}${i.comp?' — '+i.comp:''}</span><div style="display:flex;align-items:center;gap:8px;">${badge}<span style="color:var(--text3);font-size:10px;">${i.end}</span></div></div>`;}).join('')}<div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:6px;">Управление в разделе Страховки</div></div>`:'';
+    const carSvcs=[...D.services.filter(s=>s.carId===car.id)].sort((a,b)=>b.date.localeCompare(a.date));
+    const svcsHtml=carSvcs.length?`<div class="tbl-w" style="margin-bottom:12px;"><div class="sec-t" style="font-size:9px;">РАБОТЫ / УСЛУГИ</div><table><thead><tr><th>ОПИСАНИЕ</th><th class="r">СТОИМОСТЬ</th><th>ДАТА</th><th class="r">ПРОБЕГ</th><th>ТИП</th><th></th></tr></thead><tbody>${carSvcs.map(s=>`<tr><td class="nm">${s.desc}</td><td class="r">${s.diy?'<span class="badge green">DIY</span>':fmt(s.labor,0)+' тг'}</td><td>${s.date}</td><td class="r">${s.mileage?fmt(s.mileage,0)+' км':'—'}</td><td>${s.partId?'<span class="badge gold">+ЗАПЧАСТЬ</span>':'—'}</td><td><button class="btn sm del" onclick="delService(${s.id})">✕</button></td></tr>`).join('')}</tbody></table></div>`:'' ;
+    const totalSvc=carSvcs.reduce((s,x)=>s+x.labor,0);
+    return`<div class="car-card"><div class="car-hd"><div><div class="car-title">${car.make} ${car.model} ${car.year||''}</div><div class="car-meta">${car.plate||''} • Пробег: ${fmt(car.mileage,0)} км • Запчасти: ${fmt(spent,0)} тг • Работы: ${fmt(totalSvc,0)} тг • Итого: ${fmt(spent+totalSvc,0)} тг</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn sm blue-b" onclick="openAddPart(${car.id})">+ ЗАПЧАСТЬ</button><button class="btn sm blue-b" onclick="openAddSvc(${car.id})">+ РАБОТА</button><button class="btn sm edit" onclick="editCar(${car.id})">✎</button><button class="btn sm del" onclick="delCar(${car.id})">✕</button></div></div>${insHtml}${upHtml}${svcsHtml}<div class="sec-t" style="font-size:9px;">ЗАПЧАСТИ</div>${partsHtml}</div>`;
+  }).join('');
+}
+
+// REMINDERS
+function buildReminders(){
+  // Add car tax reminder if cars exist
+  const now=new Date();
+  const taxDeadline=`${now.getFullYear()}-04-01`;
+  const daysToTax=daysLeft(taxDeadline);
+  if(D.cars.length&&daysToTax!==null&&daysToTax>=0&&daysToTax<=60){
+    // Already handled below
+  }
+  const items=[];
+  D.credits.forEach(c=>{if(c.end){const d=daysLeft(c.end);if(d!==null&&d<=90)items.push({type:'Кредит',title:c.bank,detail:'Дата закрытия: '+c.end,days:d,pri:'crit'});}});
+  D.deposits.forEach(d=>{if(d.end){const dl=daysLeft(d.end);if(dl!==null&&dl<=90)items.push({type:'Депозит',title:d.bank,detail:'Дата окончания: '+d.end,days:dl,pri:dl<30?'crit':'warn'});}});
+  D.insurance.forEach(i=>{const dl=daysLeft(i.end);if(dl!==null&&dl<=90)items.push({type:'Страховка',title:i.obj,detail:'Окончание: '+i.end,days:dl,pri:dl<30?'crit':'warn'});});
+  D.rent.forEach(r=>{if(r.end){const dl=daysLeft(r.end);if(dl!==null&&dl<=60)items.push({type:'Аренда',title:r.addr,detail:'Договор до: '+r.end,days:dl,pri:dl<14?'crit':'warn'});}});
+  D.parts.forEach(p=>{if(p.nextDate){const dl=daysLeft(p.nextDate);const car=D.cars.find(c=>c.id===p.carId);if(dl!==null&&dl<=30)items.push({type:'Гараж',title:car?car.make+' '+car.model:'',detail:'Замена: '+p.name,days:dl,pri:dl<7?'crit':'warn'});}}); 
+  // Car tax reminder
+  if(D.cars.length){const now2=new Date();const taxDate=`${now2.getFullYear()}-04-01`;const dtx=daysLeft(taxDate);if(dtx!==null&&dtx>=0&&dtx<=60)items.push({type:'Налог',title:'Транспортный налог',detail:`Срок уплаты: ${taxDate} (до 1 апреля)`,days:dtx,pri:dtx<14?'crit':'warn'});}
+  D.privateDebts.forEach(d=>{if(d.due){const dl=daysLeft(d.due);if(dl!==null&&dl<=30)items.push({type:'Долг',title:d.name,detail:'Возврат: '+fmt(Math.max((d.returnSum||d.sum)-(d.paid||0),0),0)+' тг',days:dl,pri:dl<7?'crit':'warn'});}});
+  D.iOweMe.forEach(d=>{if(d.due){const dl=daysLeft(d.due);const rest=d.sum-(d.returned||0);if(dl!==null&&dl<=30&&rest>0)items.push({type:'Мне должны',title:d.name,detail:'Ожидается: '+fmt(rest,0)+' тг',days:dl,pri:'warn'});}});
+  return items.sort((a,b)=>a.days-b.days);
+}
+function remHTML(items){
+  return items.map(i=>{const badge=i.days<0?'<span class="badge red">ПРОСРОЧЕНО</span>':i.days<30?`<span class="badge red">${i.days} дн.</span>`:i.days<60?`<span class="badge gold">${i.days} дн.</span>`:`<span class="badge green">${i.days} дн.</span>`;const cl=i.pri==='crit'?'rc':i.days<60?'rw':'rok';return`<div class="rem-item ${cl}"><div><div style="font-size:13px;color:var(--text);">${i.type}: ${i.title}</div><div style="font-size:10px;font-family:var(--mono);color:var(--text3);">${i.detail}</div></div>${badge}</div>`;}).join('');
+}
+function renderReminders(){const items=buildReminders();const el=document.getElementById('all-reminders');el.innerHTML=items.length?remHTML(items):'<div class="empty">Нет срочных напоминаний</div>';}
+
+// DASHBOARD
+function renderDashboard(){
+  const ymN=ymOf(),now=new Date();
+  const s=D.settings||{usdRate:450,eurRate:500,rubRate:4.8};
+  const depKZT=D.deposits.reduce((sum,d)=>{let v=d.sum;if(d.cur==='USD')v=v*s.usdRate;else if(d.cur==='EUR')v=v*s.eurRate;else if(d.cur==='RUB')v=v*(s.rubRate||4.8);return sum+v;},0);
+  const propAssetsVal=D.properties.reduce((s,p)=>s+(p.value||0),0);
+  const incA=D.assets.filter(a=>a.cat==='income').reduce((s2,a)=>s2+a.buy,0)+depKZT+D.invest.reduce((s2,p)=>s2+p.qty*p.currentPrice,0)+propAssetsVal;
+  const privateDebtTotal=D.privateDebts.reduce((s,d)=>s+Math.max((d.returnSum||d.sum)-(d.paid||0),0),0);
+  const iOweMeTotal=D.iOweMe.reduce((s,d)=>s+Math.max(d.sum-(d.returned||0),0),0);
+  const debt=D.credits.reduce((s,c)=>s+(c.rest||0),0)+privateDebtTotal,nw=incA+iOweMeTotal-debt;
+  const mInc=D.income.filter(i=>i.date.slice(0,7)===ymN).reduce((s,i)=>s+i.sum,0);
+  const mExp=D.expenses.filter(e=>e.date.slice(0,7)===ymN).reduce((s,e)=>s+e.sum,0);
+  const bal=mInc-mExp,divTot=D.dividends.reduce((s,d)=>s+d.amount*d.qty,0),rentM=D.rent.reduce((s,r)=>s+r.sum,0);
+  const rewardVal=D.invest.filter(p=>p.source==='cashback').reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  // NW history
+  D.nwHistory=D.nwHistory||[];const nwByM={};D.nwHistory.forEach(h=>{nwByM[h.m]=h.v;});nwByM[ymN]=nw;D.nwHistory=Object.keys(nwByM).sort().map(m=>({m,v:nwByM[m]}));
+  // Insight
+  const prevM=ymOf(new Date(now.getFullYear(),now.getMonth()-1,1));
+  const pInc=D.income.filter(i=>i.date.slice(0,7)===prevM).reduce((s,i)=>s+i.sum,0);
+  const pExp=D.expenses.filter(e=>e.date.slice(0,7)===prevM).reduce((s,e)=>s+e.sum,0);
+  let iHtml='';
+  if(mInc||mExp||pInc||pExp){
+    const id=pInc?((mInc-pInc)/pInc)*100:0,ed=pExp?((mExp-pExp)/pExp)*100:0;
+    const top=Object.entries(D.expenses.filter(e=>e.date.slice(0,7)===ymN).reduce((r,e)=>{r[e.cat]=(r[e.cat]||0)+e.sum;return r;},{})).sort((a,b)=>b[1]-a[1])[0];
+    iHtml=`<div class="ins-block"><div class="ins-title">💡 ФИНАНСОВЫЙ ИТОГ МЕСЯЦА</div><div class="ins-text">${bal>=0?`<span class="pos">Баланс положительный: +${fmt(bal,0)} тг.</span>`:`<span class="neg">Баланс отрицательный: ${fmt(bal,0)} тг.</span>`}${id!==0?` Доходы ${id>=0?'<span class="pos">выросли':'<span class="neg">упали'} на ${fmt(Math.abs(id),1)}%</span> к прошлому месяцу.`:''}${ed!==0?` Расходы ${ed>=0?'<span class="neg">выросли':'<span class="pos">снизились'} на ${fmt(Math.abs(ed),1)}%</span>.`:''}${top?` Главная статья расходов: <span class="gold">${top[0]} (${fmt(top[1],0)} тг)</span>.`:''}${debt>0?` Долговая нагрузка: <span class="neg">${fmt(debt,0)} тг</span>.`:''}</div></div>`;
+  }
+  document.getElementById('dash-insight').innerHTML=iHtml;
+  // KPIs
+  document.getElementById('dash-kpis').innerHTML=`
+    <div class="kpi imp"><div class="kpi-label">ЧИСТЫЙ КАПИТАЛ</div><div class="kpi-val ${nw>=0?'gold':'red'}">${fmt(nw,0)}</div><div class="kpi-sub">Доходные активы − Долги</div></div>
+    <div class="kpi imp"><div class="kpi-label">ДОХОДНЫЕ АКТИВЫ</div><div class="kpi-val blue">${fmt(incA,0)}</div><div class="kpi-sub">Активы + вклады + портфель</div></div>
+    <div class="kpi ${debt>0?'crit':'rtn'}"><div class="kpi-label">ДОЛГИ</div><div class="kpi-val red">${fmt(debt,0)}</div><div class="kpi-sub">Остаток по кредитам</div></div>
+    <div class="kpi pos-k"><div class="kpi-label">ДОХОД МЕСЯЦ</div><div class="kpi-val green">${fmt(mInc,0)}</div><div class="kpi-sub">${ymN}</div></div>
+    <div class="kpi ${mExp>mInc?'crit':'rtn'}"><div class="kpi-label">РАСХОДЫ МЕСЯЦ</div><div class="kpi-val red">${fmt(mExp,0)}</div><div class="kpi-sub">${ymN}</div></div>
+    <div class="kpi ${bal>=0?'pos-k':'crit'}"><div class="kpi-label">БАЛАНС МЕСЯЦ</div><div class="kpi-val ${bal>=0?'green':'red'}">${bal>=0?'+':''}${fmt(bal,0)}</div><div class="kpi-sub">Доходы − Расходы</div></div>
+    <div class="kpi pos-k"><div class="kpi-label">АРЕНДА / МЕС</div><div class="kpi-val green">${fmt(rentM,0)}</div><div class="kpi-sub">Пассивный доход</div></div>
+    <div class="kpi pos-k"><div class="kpi-label">ДИВИДЕНДЫ</div><div class="kpi-val green">${fmt(divTot,0)}</div><div class="kpi-sub">Всего получено</div></div>
+    ${rewardVal>0?`<div class="kpi imp"><div class="kpi-label">КЭШБЭК АКТИВЫ</div><div class="kpi-val blue">${fmt(rewardVal,0)}</div><div class="kpi-sub">Наградные позиции</div></div>`:''}
+    ${iOweMeTotal>0?`<div class="kpi pos-k"><div class="kpi-label">МНЕ ДОЛЖНЫ</div><div class="kpi-val green">${fmt(iOweMeTotal,0)}</div><div class="kpi-sub">Ожидаемые возвраты</div></div>`:''}
+    ${privateDebtTotal>0?`<div class="kpi crit"><div class="kpi-label">Я ДОЛЖЕН (частн.)</div><div class="kpi-val red">${fmt(privateDebtTotal,0)}</div><div class="kpi-sub">Частные долги</div></div>`:''}`;
+  // Assets pie
+  const ad={};if(D.assets.filter(a=>a.cat==='income').length)ad['Активы']=D.assets.filter(a=>a.cat==='income').reduce((s,a)=>s+a.buy,0);if(D.properties.length)ad['Недвижимость']=D.properties.reduce((s,p)=>s+(p.value||0),0);if(D.deposits.length)ad['Депозиты']=D.deposits.reduce((s,d)=>s+d.sum,0);if(D.invest.length)ad['Инвестиции']=D.invest.reduce((s,p)=>s+p.qty*p.currentPrice,0);
+  const al=Object.keys(ad),av=al.map(k=>ad[k]),ab=al.map((_,i)=>CLR[i%CLR.length]);
+  if(al.length){mkChart('c-assets','doughnut',{labels:al,datasets:[{data:av,backgroundColor:ab,borderColor:'#070b12',borderWidth:2}]},{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}});const tot=av.reduce((s,v)=>s+v,0);document.getElementById('l-assets').innerHTML=al.map((l,i)=>{const p=tot?((av[i]/tot)*100).toFixed(1):0;return`<span style="display:flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;background:${ab[i]};display:inline-block;"></span>${l} ${p}%</span>`;}).join('');}
+  // Income vs expenses
+  const m6=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);m6.push(ymOf(d));}
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8a9ab5',font:{family:'IBM Plex Mono',size:10},boxWidth:10}}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};
+  mkChart('c-inout','bar',{labels:m6,datasets:[{label:'Доходы',data:m6.map(m=>D.income.filter(x=>x.date.slice(0,7)===m).reduce((s,x)=>s+x.sum,0)),backgroundColor:'rgba(0,200,150,0.6)',borderColor:'#00c896',borderWidth:1},{label:'Расходы',data:m6.map(m=>D.expenses.filter(x=>x.date.slice(0,7)===m).reduce((s,x)=>s+x.sum,0)),backgroundColor:'rgba(240,82,82,0.5)',borderColor:'#f05252',borderWidth:1}]},base);
+  // Income vs Expenses % legend
+  const legend=document.getElementById('inout-legend');
+  if(legend){
+    const pctData=m6.map(m=>{
+      const inc=D.income.filter(x=>x.date.slice(0,7)===m).reduce((s,x)=>s+x.sum,0);
+      const exp=D.expenses.filter(x=>x.date.slice(0,7)===m).reduce((s,x)=>s+x.sum,0);
+      return{m,inc,exp,pct:inc>0?Math.round((exp/inc)*100):null};
+    }).filter(x=>x.inc>0||x.exp>0);
+    legend.innerHTML=pctData.map(x=>{
+      const over=x.pct>100,ok=x.pct<=70;
+      const color=over?'var(--red)':ok?'var(--green)':'var(--gold)';
+      const label=over?'перерасход':'профицит';
+      const diff=x.pct!==null?(over?x.pct-100:100-x.pct):null;
+      return`<span style="color:${color};">${monthLabel(x.m)}: ${label} ${diff!==null?diff+'%':'—'}</span>`;
+    }).join('<span style="color:var(--text3);margin:0 6px;">|</span>');
+  }
+  // NW chart
+  if(D.nwHistory.length>1){const nwB={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:8},grid:{color:'rgba(251,188,4,0.05)'}},y:{ticks:{color:'#4a5568',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(251,188,4,0.07)'}}}};mkChart('c-networth','line',{labels:D.nwHistory.map(h=>h.m),datasets:[{data:D.nwHistory.map(h=>h.v),borderColor:'#fbb804',backgroundColor:'rgba(251,188,4,0.06)',borderWidth:2,pointRadius:4,pointBackgroundColor:'#fbb804',fill:true,tension:.3}]},nwB);}
+  // Reminders
+  const items=buildReminders().slice(0,5);const dr=document.getElementById('dash-reminders'),panel=document.getElementById('dash-rem-panel');
+  if(!items.length){dr.innerHTML='<div style="color:var(--text3);font-family:var(--mono);font-size:11px;">Нет срочных напоминаний</div>';panel.style.display='none';return;}
+  panel.style.display='block';dr.innerHTML=remHTML(items);
+  // Nav critical badge
+  if(items.some(i=>i.pri==='crit')){document.querySelectorAll('.nav-btn').forEach(b=>{if(b.textContent.includes('НАПОМИНАНИЯ'))b.classList.add('crit');});}
+}
+
+async function fetchFxRates(){
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/KZT');
+    const data=await r.json();
+    if(data&&data.rates){
+      const usd=1/data.rates['USD'],eur=1/data.rates['EUR'],rub=1/data.rates['RUB'];
+      D.settings=D.settings||{};
+      D.settings.usdRate=Math.round(usd);
+      D.settings.eurRate=Math.round(eur);
+      D.settings.rubRate=Math.round(rub*100)/100;
+      D.settings.fxUpdated=new Date().toLocaleString('ru-RU');
+      save();renderDashboard();
+      return true;
+    }
+  }catch(e){console.log('FX fetch failed',e);}
+  return false;
+}
+function resetAllData(){
+  if(!confirm('⚠️ ВНИМАНИЕ! Все данные будут удалены безвозвратно!\nВы уверены?')) return;
+  if(!confirm('Это действие нельзя отменить. Продолжить?')) return;
+  localStorage.removeItem('fd3');
+  location.reload();
+}
+function openSettings(){
+  const s=D.settings||{usdRate:450,eurRate:500,rubRate:4.8};
+  const updated=s.fxUpdated?`<div style="font-size:10px;font-family:var(--mono);color:var(--green);margin-top:6px;">Обновлено: ${s.fxUpdated}</div>`:'';
+  const html=`<div class="form-row c3">${mF('Курс USD → KZT','usd',s.usdRate,'number')}${mF('Курс EUR → KZT','eur',s.eurRate,'number')}${mF('Курс RUB → KZT','rub',s.rubRate||4.8,'number')}</div>${updated}<div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:8px;">Используется для расчёта чистого капитала</div>`;
+  openModal('КУРСЫ ВАЛЮТ',html,()=>{
+    D.settings=D.settings||{};
+    D.settings.usdRate=mvf('usd')||450;
+    D.settings.eurRate=mvf('eur')||500;
+    D.settings.rubRate=mvf('rub')||4.8;
+    save();renderDashboard();closeModal();
+  });
+  // Try auto-fetch
+  setTimeout(async()=>{
+    const ok=await fetchFxRates();
+    if(ok){
+      const s2=D.settings;
+      document.querySelector('#m-usd') && (document.querySelector('#m-usd').value=s2.usdRate);
+      document.querySelector('#m-eur') && (document.querySelector('#m-eur').value=s2.eurRate);
+      document.querySelector('#m-rub') && (document.querySelector('#m-rub').value=s2.rubRate);
+    }
+  },300);
+}
+function updateGoalDepDropdown(){
+  const sel=document.getElementById('goal-dep');if(!sel)return;
+  const opts='<option value="">— без привязки —</option>'+D.deposits.map(d=>`<option value="${d.id}">${d.bank} (${fmt(d.sum,0)} ${d.cur})</option>`).join('');
+  sel.innerHTML=opts;
+}
+// ============ STO DIRECTORY ============
+function toggleStoPanel(){
+  const body=document.getElementById('sto-panel-body');
+  const icon=document.getElementById('sto-panel-icon');
+  if(!body)return;
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  if(icon)icon.textContent=open?'▼ РАЗВЕРНУТЬ':'▲ СВЕРНУТЬ';
+}
+function addSto(){
+  const name=document.getElementById('sto-name').value.trim();
+  if(!name){alert('Введите название СТО');return;}
+  const addr=document.getElementById('sto-addr').value.trim();
+  const phone=document.getElementById('sto-phone').value.trim();
+  const spec=document.getElementById('sto-spec').value;
+  const notes=document.getElementById('sto-notes').value.trim();
+  D.stos.push({id:Date.now(),name,addr,phone,spec,notes});
+  save();renderStoList();updStoDropdowns();
+  ['sto-name','sto-addr','sto-phone','sto-notes'].forEach(id=>document.getElementById(id).value='');
+}
+function delSto(id){
+  if(!confirm('Удалить СТО?'))return;
+  D.stos=D.stos.filter(x=>x.id!==id);save();renderStoList();updStoDropdowns();
+}
+function renderStoList(){
+  const list=document.getElementById('sto-list');if(!list)return;
+  if(!D.stos.length){list.innerHTML='<div class="empty">СТО не добавлены</div>';return;}
+  list.innerHTML=D.stos.map(s=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text);">${s.name}</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3);">${s.spec}${s.addr?' • '+s.addr:''}</div>
+        ${s.phone?`<div style="font-size:11px;font-family:var(--mono);color:var(--blue);">${s.phone}</div>`:''}
+        ${s.notes?`<div style="font-size:10px;color:var(--text3);">${s.notes}</div>`:''}
+      </div>
+      <button class="btn sm del" onclick="delSto(${s.id})">✕</button>
+    </div>`).join('');
+}
+function updStoDropdowns(){
+  ['svc-where-sel','part-where-sel'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    sel.innerHTML='<option value="">— выбрать СТО —</option>'+D.stos.map(s=>`<option value="${s.name}">${s.name}${s.spec?' ('+s.spec+')':''}</option>`).join('')+'<option value="__manual">Ввести вручную</option>';
+  });
+}
+// ============ ACCOUNTS & TRANSFERS ============
+function addAccount(){
+  const name=document.getElementById('acc-name').value.trim();
+  const type=document.getElementById('acc-type').value;
+  const balance=safeNum('acc-balance')||0;
+  const cur=document.getElementById('acc-cur').value;
+  if(!name){alert('Введите название счёта');return;}
+  D.accounts.push({id:Date.now(),name,type,balance,cur});
+  save();renderAccounts();updTransferDropdowns();
+  document.getElementById('acc-name').value='';
+  document.getElementById('acc-balance').value='';
+}
+function editAccount(id){
+  const a=D.accounts.find(x=>x.id===id);if(!a)return;
+  const html=`<div class="form-row c2">${mF('Название','name',a.name)}${mF('Тип','type',a.type,null,['Карта','Наличные','Текущий счёт','Другое'])}</div><div class="form-row c2">${mF('Баланс','bal',a.balance,'text')}${mF('Валюта','cur',a.cur,null,['KZT','USD','EUR'])}</div>`;
+  openModal('РЕДАКТИРОВАТЬ СЧЁТ',html,()=>{a.name=mv('name');a.type=mv('type');a.balance=safeParseFloat(mv('bal'))||0;a.cur=mv('cur');save();renderAccounts();updTransferDropdowns();closeModal();});
+}
+function delAccount(id){if(!confirm('Удалить счёт?'))return;D.accounts=D.accounts.filter(x=>x.id!==id);save();renderAccounts();updTransferDropdowns();}
+function renderAccounts(){
+  const list=document.getElementById('accounts-list');if(!list)return;
+  if(!D.accounts.length&&!D.deposits.length){list.innerHTML='<div class="empty">Счета не добавлены</div>';return;}
+  let html='';
+  // Show manual accounts
+  D.accounts.forEach(a=>{
+    html+=`<div class="acc-card"><div><div style="font-size:13px;font-weight:500;color:var(--text);">${a.name}</div><div style="font-size:10px;font-family:var(--mono);color:var(--text3);">${a.type}</div></div><div style="display:flex;align-items:center;gap:10px;"><div style="font-family:var(--mono);font-size:14px;color:var(--green);">${fmt(a.balance,0)} ${a.cur}</div><button class="btn sm edit" onclick="editAccount(${a.id})">✎</button><button class="btn sm del" onclick="delAccount(${a.id})">✕</button></div></div>`;
+  });
+  // Show deposits as accounts
+  if(D.deposits.length){
+    html+=`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin:10px 0 6px;letter-spacing:1px;">ДЕПОЗИТЫ:</div>`;
+    D.deposits.forEach(d=>{html+=`<div class="acc-card" style="border-color:var(--imp-bdr);"><div><div style="font-size:13px;font-weight:500;color:var(--blue);">${d.bank}</div><div style="font-size:10px;font-family:var(--mono);color:var(--text3);">Депозит</div></div><div style="font-family:var(--mono);font-size:14px;color:var(--green);">${fmt(d.sum,0)} ${d.cur}</div></div>`;});
+  }
+  list.innerHTML=html;
+}
+function updTransferDropdowns(){
+  const allAccounts=[
+    ...D.accounts.map(a=>({id:'acc_'+a.id,label:a.name+' ('+a.cur+')',balance:a.balance})),
+    ...D.deposits.map(d=>({id:'dep_'+d.id,label:d.bank+' депозит ('+d.cur+')',balance:d.sum})),
+    {id:'external',label:'Внешний источник / Наличные',balance:0}
+  ];
+  ['tr-from','tr-to'].forEach(selId=>{
+    const sel=document.getElementById(selId);if(!sel)return;
+    sel.innerHTML='<option value="">— выберите —</option>'+allAccounts.map(a=>`<option value="${a.id}">${a.label}</option>`).join('');
+  });
+}
+function addTransfer(){
+  const fromId=document.getElementById('tr-from').value;
+  const toId=document.getElementById('tr-to').value;
+  const sum=safeNum('tr-sum');
+  const date=document.getElementById('tr-date').value;
+  const note=document.getElementById('tr-note').value.trim();
+  if(!fromId||!toId||isNaN(sum)||sum<=0||!date){alert('Заполните все поля');return;}
+  if(fromId===toId){alert('Откуда и куда не могут совпадать');return;}
+  // Update balances
+  if(fromId.startsWith('acc_')){const a=D.accounts.find(x=>x.id===parseInt(fromId.slice(4)));if(a)a.balance-=sum;}
+  if(fromId.startsWith('dep_')){const d=D.deposits.find(x=>x.id===parseInt(fromId.slice(4)));if(d)d.sum-=sum;}
+  if(toId.startsWith('acc_')){const a=D.accounts.find(x=>x.id===parseInt(toId.slice(4)));if(a)a.balance+=sum;}
+  if(toId.startsWith('dep_')){const d=D.deposits.find(x=>x.id===parseInt(toId.slice(4)));if(d)d.sum+=sum;}
+  // Get labels
+  const allAccs=[...D.accounts.map(a=>({id:'acc_'+a.id,label:a.name})),...D.deposits.map(d=>({id:'dep_'+d.id,label:d.bank+' (депозит)'})),{id:'external',label:'Внешний источник'}];
+  const fromLabel=allAccs.find(x=>x.id===fromId)?.label||fromId;
+  const toLabel=allAccs.find(x=>x.id===toId)?.label||toId;
+  D.transfers.push({id:Date.now(),fromId,toId,fromLabel,toLabel,sum,date,note});
+  save();renderAccounts();renderTransfers();renderDeposits();updTransferDropdowns();
+  document.getElementById('tr-sum').value='';document.getElementById('tr-date').value='';document.getElementById('tr-note').value='';
+}
+function delTransfer(id){
+  if(!confirm('Удалить перевод? Балансы не восстановятся автоматически.'))return;
+  D.transfers=D.transfers.filter(x=>x.id!==id);save();renderTransfers();
+}
+function renderTransfers(){
+  const tb=document.getElementById('transfers-tbody');if(!tb)return;
+  if(!D.transfers.length){tb.innerHTML='<tr><td colspan="6" class="empty">—</td></tr>';return;}
+  const sorted=[...D.transfers].sort((a,b)=>b.date.localeCompare(a.date));
+  tb.innerHTML=sorted.map(t=>`<tr><td>${t.date}</td><td class="tk">${t.fromLabel}</td><td class="nm">${t.toLabel}</td><td class="r pos">${fmt(t.sum,0)}</td><td>${t.note||'—'}</td><td><button class="btn sm del" onclick="delTransfer(${t.id})">✕</button></td></tr>`).join('');
+}
+
+// ============ DEBTS SYSTEM ============
+function showDebtTab(tab,el){
+  document.querySelectorAll('.debt-tab').forEach(t=>t.classList.remove('active'));
+  ['dpane-bank','dpane-private','dpane-ioweme'].forEach(function(id){
+    var p=document.getElementById(id);if(p)p.style.display='none';
+  });
+  el.classList.add('active');
+  var pane=document.getElementById('dpane-'+tab);
+  if(pane)pane.style.display='block';
+}
+function togglePdRate(){
+  const type=document.getElementById('pd-rate-type').value;
+  const wrap=document.getElementById('pd-rate-wrap');
+  const label=document.getElementById('pd-rate-label');
+  if(type==='none'){wrap.style.display='none';}
+  else{wrap.style.display='grid';label.textContent=type==='percent'?'Ставка % годовых':'Фиксированная сумма возврата';}
+}
+function addPrivateDebt(){
+  const name=document.getElementById('pd-name').value.trim();
+  const contact=document.getElementById('pd-contact').value.trim();
+  const sum=safeNum('pd-sum');
+  const date=document.getElementById('pd-date').value;
+  const due=document.getElementById('pd-due').value;
+  const rateType=document.getElementById('pd-rate-type').value;
+  const rateVal=safeNum('pd-rate-val')||0;
+  const terms=document.getElementById('pd-terms').value.trim();
+  if(!name||isNaN(sum)||sum<=0){alert('Заполните имя и сумму');return;}
+  const returnSum=rateType==='fixed'?rateVal:rateType==='percent'?sum*(1+rateVal/100):sum;
+  D.privateDebts.push({id:Date.now(),name,contact,sum,date,due,rateType,rateVal,returnSum,terms,paid:0});
+  save();renderPrivateDebts();
+  ['pd-name','pd-contact','pd-sum','pd-date','pd-due','pd-rate-val','pd-terms'].forEach(id=>document.getElementById(id).value='');
+}
+function payPrivateDebt(id){
+  const d=D.privateDebts.find(x=>x.id===id);if(!d)return;
+  const amount=safeParseFloat(prompt('Сумма платежа:'));
+  if(isNaN(amount)||amount<=0)return;
+  d.paid=(d.paid||0)+amount;
+  D.expenses.push({id:Date.now(),cat:'Долг',subcat:'Частный займ',sum:amount,date:td(),cur:'KZT',desc:'Погашение долга — '+d.name,source:'debt'});
+  save();renderPrivateDebts();renderExpenses();
+}
+function delPrivateDebt(id){if(!confirm('Удалить?'))return;D.privateDebts=D.privateDebts.filter(x=>x.id!==id);save();renderPrivateDebts();}
+function renderPrivateDebts(){
+  const tb=document.getElementById('pd-tbody');if(!tb)return;
+  if(!D.privateDebts.length){tb.innerHTML='<tr><td colspan="9" class="empty">—</td></tr>';return;}
+  tb.innerHTML=D.privateDebts.map(d=>{
+    const rest=Math.max((d.returnSum||d.sum)-(d.paid||0),0);
+    const pct=d.returnSum?(((d.paid||0)/d.returnSum)*100):0;
+    const left=d.due?daysLeft(d.due):null;
+    const lcl=left!==null&&left<30?'neg':left!==null&&left<7?'neg':'';
+    return`<tr class="rc"><td class="nm">${d.name}</td><td style="font-size:10px;color:var(--text3);">${d.contact||'—'}</td><td class="r">${fmt(d.sum,0)}</td><td class="r">${fmt(d.returnSum,0)}</td><td class="r neg">${fmt(rest,0)}</td><td>${d.date||'—'}</td><td class="${lcl}">${d.due||'—'}</td><td style="font-size:10px;">${d.terms||'—'}</td><td style="display:flex;gap:4px;"><button class="btn sm grn" onclick="payPrivateDebt(${d.id})" title="Внести платёж">✓</button><button class="btn sm del" onclick="delPrivateDebt(${d.id})">✕</button></td></tr>`;
+  }).join('');
+}
+function addIOweMe(){
+  const name=document.getElementById('iom-name').value.trim();
+  const contact=document.getElementById('iom-contact').value.trim();
+  const sum=safeNum('iom-sum');
+  const date=document.getElementById('iom-date').value;
+  const due=document.getElementById('iom-due').value;
+  const note=document.getElementById('iom-note').value.trim();
+  if(!name||isNaN(sum)||sum<=0){alert('Заполните имя и сумму');return;}
+  D.iOweMe.push({id:Date.now(),name,contact,sum,date,due,note,returned:0});
+  save();renderIOweMe();
+  ['iom-name','iom-contact','iom-sum','iom-date','iom-due','iom-note'].forEach(id=>document.getElementById(id).value='');
+}
+function returnIOweMe(id){
+  const d=D.iOweMe.find(x=>x.id===id);if(!d)return;
+  const amount=safeParseFloat(prompt('Сумма возврата:'));
+  if(isNaN(amount)||amount<=0)return;
+  d.returned=(d.returned||0)+amount;
+  D.income.push({id:Date.now(),type:'Прочее',sum:amount,date:td(),cur:'KZT',desc:'Возврат долга — '+d.name});
+  save();renderIOweMe();renderIncome();
+}
+function delIOweMe(id){if(!confirm('Удалить?'))return;D.iOweMe=D.iOweMe.filter(x=>x.id!==id);save();renderIOweMe();}
+function renderIOweMe(){
+  const tb=document.getElementById('iom-tbody');if(!tb)return;
+  if(!D.iOweMe.length){tb.innerHTML='<tr><td colspan="9" class="empty">—</td></tr>';return;}
+  tb.innerHTML=D.iOweMe.map(d=>{
+    const rest=Math.max(d.sum-(d.returned||0),0);
+    const left=d.due?daysLeft(d.due):null;
+    const lcl=left!==null&&left<30?'neg':'';
+    return`<tr class="ri"><td class="nm">${d.name}</td><td style="font-size:10px;color:var(--text3);">${d.contact||'—'}</td><td class="r">${fmt(d.sum,0)}</td><td class="r pos">${fmt(d.returned||0,0)}</td><td class="r ${rest>0?'neg':'pos'}">${fmt(rest,0)}</td><td>${d.date||'—'}</td><td class="${lcl}">${d.due||'—'}</td><td style="font-size:10px;">${d.note||'—'}</td><td style="display:flex;gap:4px;"><button class="btn sm grn" onclick="returnIOweMe(${d.id})" title="Вернули">✓</button><button class="btn sm del" onclick="delIOweMe(${d.id})">✕</button></td></tr>`;
+  }).join('');
+}
+
+// ============ PROPERTY SYSTEM ============
+let currentPropId=null;
+
+function addProperty(){
+  const name=document.getElementById('prop-name').value.trim();
+  const type=document.getElementById('prop-type').value;
+  const status=document.getElementById('prop-status').value;
+  const area=safeNum('prop-area')||0;
+  const value=safeNum('prop-value')||0;
+  const year=document.getElementById('prop-year').value;
+  const notes=document.getElementById('prop-notes').value.trim();
+  if(!name){alert('Введите название объекта');return;}
+  D.properties.push({id:Date.now(),name,type,status,area,value,year,notes});
+  save();renderProperty();
+  ['prop-name','prop-area','prop-value','prop-year','prop-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+function editProperty(id){
+  const p=D.properties.find(x=>x.id===id);if(!p)return;
+  const html=`<div class="form-row c3">${mF('Название','name',p.name)}${mF('Тип','type',p.type,null,['Квартира','Дом','Земля','Коммерческий','Другое'])}${mF('Статус','status',p.status,null,['Проживаю','Сдаю в аренду','Пустует','Продаётся'])}</div><div class="form-row c3">${mF('Площадь','area',p.area,'number')}${mF('Стоимость','value',p.value,'number')}${mF('Год','year',p.year,'number')}</div><div class="form-row">${mF('Заметки','notes',p.notes)}</div>`;
+  openModal('РЕДАКТИРОВАТЬ ОБЪЕКТ',html,()=>{p.name=mv('name');p.type=mv('type');p.status=mv('status');p.area=mvf('area');p.value=mvf('value');p.year=mv('year');p.notes=mv('notes');save();renderProperty();closeModal();});
+}
+
+function delProperty(id){
+  if(!confirm('Удалить объект и все расходы по нему?'))return;
+  D.properties=D.properties.filter(x=>x.id!==id);
+  D.expenses=D.expenses.filter(e=>e.propId!==id);
+  save();renderProperty();
+}
+
+function openAddUtil(propId){
+  currentPropId=propId;
+  const prop=D.properties.find(x=>x.id===propId);
+  document.getElementById('add-util-panel').style.display='block';
+  document.getElementById('add-util-title').textContent='РАСХОД — '+prop.name;
+  document.getElementById('add-util-panel').scrollIntoView({behavior:'smooth'});
+}
+
+function closeAddUtil(){
+  document.getElementById('add-util-panel').style.display='none';
+  currentPropId=null;
+}
+
+function addUtility(){
+  if(!currentPropId){alert('Выберите объект');return;}
+  const cat=document.getElementById('util-cat').value;
+  const sum=safeNum('util-sum');
+  const date=document.getElementById('util-date').value;
+  const period=document.getElementById('util-period').value;
+  const desc=document.getElementById('util-desc').value.trim();
+  const prop=D.properties.find(x=>x.id===currentPropId);
+  if(isNaN(sum)||!date){alert('Заполните сумму и дату');return;}
+  D.expenses.push({id:Date.now(),cat,subcat:prop?prop.name:'',sum,date,cur:'KZT',desc:desc||(cat+(period?' '+period:'')),source:'property',propId:currentPropId});
+  save();renderProperty();renderExpenses();
+  ['util-sum','util-date','util-period','util-desc'].forEach(id=>document.getElementById(id).value='');
+}
+
+function renderProperty(){
+  const list=document.getElementById('property-list');
+  if(!list)return;
+  if(!D.properties.length){
+    list.innerHTML='<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:11px;">Объекты не добавлены</div>';
+    return;
+  }
+  list.innerHTML=D.properties.map(prop=>{
+    const propExp=D.expenses.filter(e=>e.propId===prop.id);
+    const totalExp=propExp.reduce((s,e)=>s+e.sum,0);
+    // Monthly breakdown
+    const byMonth={};propExp.forEach(e=>{const m=e.date.slice(0,7);byMonth[m]=(byMonth[m]||0)+e.sum;});
+    const months=Object.keys(byMonth).sort().slice(-3);
+    const avgMonth=months.length?months.reduce((s,m)=>s+byMonth[m],0)/months.length:0;
+    // By category
+    const byCat={};propExp.forEach(e=>{byCat[e.cat]=(byCat[e.cat]||0)+e.sum;});
+    const statusBadge=prop.status==='Сдаю в аренду'?'<span class="badge green">АРЕНДА</span>':prop.status==='Проживаю'?'<span class="badge blue">ЖИВУ</span>':prop.status==='Продаётся'?'<span class="badge red">ПРОДАЁТСЯ</span>':'<span class="badge grey">ПУСТУЕТ</span>';
+    // Recent expenses
+    const recentExp=[...propExp].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+    const expHtml=recentExp.length?`<div class="tbl-w"><table><thead><tr><th>КАТЕГОРИЯ</th><th>ОПИСАНИЕ</th><th class="r">СУММА</th><th>ДАТА</th><th></th></tr></thead><tbody>${recentExp.map(e=>`<tr><td class="tk">${e.cat}</td><td>${e.desc||'—'}</td><td class="r neg">${fmt(e.sum,0)}</td><td>${e.date}</td><td><button class="btn sm del" onclick="delPropExp(${e.id})">✕</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Расходов нет</div>';
+    const catHtml=Object.keys(byCat).map(c=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:10px;font-family:var(--mono);color:var(--text2);">${c}: <span style="color:var(--red);">${fmt(byCat[c],0)}</span></span>`).join('');
+
+    return`<div class="panel" style="border-color:var(--imp-bdr);margin-bottom:16px;">
+      <div class="ph" style="background:var(--bg4);">
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--text);">${prop.name}</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:2px;">${prop.type} ${prop.area?'• '+prop.area+' кв.м':''} ${prop.year?'• '+prop.year+' г.':''} ${prop.value?'• '+fmt(prop.value,0)+' тг':''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">${statusBadge}<button class="btn sm blue-b" onclick="openAddUtil(${prop.id})">+ РАСХОД</button><button class="btn sm edit" onclick="editProperty(${prop.id})">✎</button><button class="btn sm del" onclick="delProperty(${prop.id})">✕</button></div>
+      </div>
+      <div class="pb">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+          <div style="background:var(--bg5);border:1px solid var(--border);padding:10px;"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:4px;">ВСЕГО РАСХОДОВ</div><div style="font-size:16px;font-family:var(--mono);color:var(--red);">${fmt(totalExp,0)} тг</div></div>
+          <div style="background:var(--bg5);border:1px solid var(--border);padding:10px;"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:4px;">СРЕДНЕЕ / МЕС</div><div style="font-size:16px;font-family:var(--mono);color:var(--orange);">${fmt(avgMonth,0)} тг</div></div>
+          <div style="background:var(--bg5);border:1px solid var(--border);padding:10px;"><div style="font-size:9px;font-family:var(--mono);color:var(--text3);margin-bottom:4px;">ЗАПИСЕЙ РАСХОДОВ</div><div style="font-size:16px;font-family:var(--mono);color:var(--text);">${propExp.length}</div></div>
+        </div>
+        ${catHtml?`<div style="margin-bottom:12px;padding:8px;background:var(--bg5);border:1px solid var(--border);">${catHtml}</div>`:''}
+        <div class="sec-t" style="font-size:9px;">ПОСЛЕДНИЕ РАСХОДЫ</div>
+        ${expHtml}
+        ${propExp.length>5?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:8px;">Показано 5 из ${propExp.length}. Все расходы в разделе Расходы.</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function delPropExp(id){
+  if(!confirm('Удалить расход?'))return;
+  D.expenses=D.expenses.filter(x=>x.id!==id);
+  save();renderProperty();renderExpenses();
+}
+
+function updPropDropdown(){
+  // For future use - link expenses to property
+}
+
+// ============ DATA MIGRATION ============
+const CURRENT_VERSION='4.2';
+function migrateData(){
+  const ver=D._version||'0';
+  if(ver===CURRENT_VERSION)return;
+  console.log('Migrating data from',ver,'to',CURRENT_VERSION);
+  
+  // Ensure all arrays exist
+  const arrays=['invest','dividends','iHistory','nwHistory','deposits','credits','assets','income','expenses','rent','goals','enpf','insurance','subs','cars','parts','services','govPremiums','properties','accounts','transfers','privateDebts','iOweMe','stos'];
+  arrays.forEach(k=>{if(!D[k])D[k]=[];});
+  
+  // Ensure settings exist
+  if(!D.settings)D.settings={usdRate:450,eurRate:500};
+  
+  // Migration: add missing fields to existing records
+  // Investments: add source field
+  D.invest.forEach(p=>{if(!p.source)p.source='purchased';if(!p.updAt)p.updAt='';});
+  
+  // Insurance: add carId, start fields
+  D.insurance.forEach(i=>{if(!i.carId)i.carId=null;if(!i.start)i.start='';});
+  
+  // Deposits: add type field
+  D.deposits.forEach(d=>{if(!d.type)d.type='fixed';if(!d.updAt)d.updAt='';});
+  
+  // Credits: add updAt
+  D.credits.forEach(c=>{if(!c.updAt)c.updAt='';});
+  
+  // Assets: add cat field
+  D.assets.forEach(a=>{if(!a.cat)a.cat='base';if(!a.salePrice===undefined)a.salePrice=null;});
+  
+  // Dividends: add total field
+  D.dividends.forEach(d=>{if(d.total===undefined)d.total=d.amount*(d.qty||0);});
+  
+  // Goals: add depId, monthlyContrib
+  D.goals.forEach(g=>{if(!g.depId)g.depId=null;if(!g.monthlyContrib)g.monthlyContrib=0;});
+  
+  // Expenses: add source, propId fields
+  D.expenses.forEach(e=>{if(!e.source)e.source='manual';if(!e.propId)e.propId=null;});
+  
+  // Rent: add propId
+  D.rent.forEach(r=>{if(!r.propId)r.propId=null;});
+  
+  // Cars: ensure mileage
+  D.cars.forEach(c=>{if(!c.mileage)c.mileage=0;});
+  
+  // Private debts: add paid field
+  D.privateDebts.forEach(d=>{if(!d.paid)d.paid=0;});
+  
+  // IOweMe: add returned field
+  D.iOweMe.forEach(d=>{if(!d.returned)d.returned=0;});
+  
+  D._version=CURRENT_VERSION;
+  save();
+  console.log('Migration complete');
+}
+function renderAll(){
+  updateDate();renderInvest();renderDivTable();renderDivChart();renderDeposits();renderCredits();renderAssets();
+  renderIncome();renderExpenses();renderExpAnalytics();renderRent();renderGoals();renderEnpf();renderInsurance();renderSubs();renderGarage();
+  renderDashboard();updInvDD();updateGoalDepDropdown();renderRewardSummary();updInsCarDropdown();renderProperty();updIncomeDepDropdown();updRentPropDropdown();renderAccounts();renderTransfers();renderPrivateDebts();renderIOweMe();renderStoList();updStoDropdowns();
+}
+
+load();migrateData();updateDate();setInterval(updateDate,60000);
+setTimeout(initNumInputs,500);
+// Auto-fetch FX rates on startup (silently)
+setTimeout(()=>fetchFxRates(),2000);
+document.addEventListener('DOMContentLoaded',()=>{const p=document.getElementById('pwd-input');if(p)p.focus();});
+</script>
+</body>
+</html>
