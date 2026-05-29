@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный финансовый дашборд</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">FINANCE TERMINAL</div>
+    <div class="login-title">Личный дашборд</div>
+    <div class="lf"><label>Пароль</label><input type="password" id="pwd-input" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-err" id="login-err">Неверный пароль</div>
+    <button class="login-btn" onclick="doLogin()">ВОЙТИ</button>
+  </div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="t-logo">⬡ FINANCE TERMINAL <span style="font-size:9px;color:var(--text3);margin-left:6px;">v4.4</span></div>
+      <div class="t-date" id="t-date" style="color:var(--gold2);font-size:12px;font-weight:500;letter-spacing:0.5px;border-left:2px solid var(--gold);padding-left:10px;"></div>
+    </div>
+    <div class="t-right">
+      <div class="t-timer" id="t-timer"></div>
+      <div class="live-dot"></div><div class="t-live">LIVE</div>
+      <button class="t-btn" onclick="exportData()">ЭКСПОРТ</button>
+      <label class="t-btn" style="cursor:pointer;">ИМПОРТ<input type="file" accept=".json" onchange="importData(event)" style="display:none;"></label>
+      <button class="t-btn" onclick="openSettings()">КУРС USD</button>
+      <button class="t-btn" onclick="resetAllData()" style="color:var(--red);border-color:var(--crit-bdr);">СБРОСИТЬ</button>
+      <button class="t-btn" onclick="logout()">ВЫХОД</button>
+    </div>
+  </div>
+  <div class="nav" id="main-nav">
+    <button class="nav-btn active" onclick="showSection('dashboard',this)">ДАШБОРД</button>
+    <button class="nav-btn" onclick="showSection('invest',this)">ИНВЕСТИЦИИ</button>
+    <button class="nav-btn" onclick="showSection('deposits',this)">ДЕПОЗИТЫ</button>
+    <button class="nav-btn" onclick="showSection('assets',this)">АКТИВЫ</button>
+    <button class="nav-btn" onclick="showSection('income',this)">ДОХОДЫ</button>
+    <button class="nav-btn" onclick="showSection('expenses',this)">РАСХОДЫ</button>
+    <button class="nav-btn" onclick="showSection('rent',this)">АРЕНДА</button>
+    <button class="nav-btn" onclick="showSection('goals',this)">ЦЕЛИ</button>
+    <button class="nav-btn" onclick="showSection('enpf',this)">ЕНПФ</button>
+    <button class="nav-btn" onclick="showSection('insurance',this)">СТРАХОВКИ</button>
+    <button class="nav-btn" onclick="showSection('subs',this)">ПОДПИСКИ</button>
+    <button class="nav-btn" onclick="showSection('property',this)">НЕДВИЖИМОСТЬ</button>
+    <button class="nav-btn" onclick="showSection('garage',this)">ГАРАЖ</button>
+    <button class="nav-btn" onclick="showSection('accounts',this)">СЧЕТА</button>
+    <button class="nav-btn" onclick="showSection('debts',this)">ДОЛГИ</button>
+    <button class="nav-btn" onclick="showSection('reminders',this)">НАПОМИНАНИЯ</button>
+  </div>
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div id="s-dashboard" class="section active">
+      <div id="dash-insight" style="margin-bottom:16px;"></div>
+      <div class="kpi-grid" id="dash-kpis"></div>
+      <div class="two-c">
+        <div class="panel imp"><div class="ph"><div class="pt imp">ДОХОДНЫЕ АКТИВЫ</div></div><div class="pb"><div style="position:relative;height:190px;"><canvas id="c-assets"></canvas></div><div id="l-assets" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">ДОХОДЫ VS РАСХОДЫ (6 мес)</div></div><div class="pb"><div style="position:relative;height:190px;"><canvas id="c-inout"></canvas></div><div id="inout-legend" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;font-size:10px;font-family:var(--mono);"></div></div></div>
+      </div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДИНАМИКА ЧИСТОГО КАПИТАЛА</div></div><div class="pb"><div style="position:relative;height:130px;"><canvas id="c-networth"></canvas></div></div></div>
+      <div class="panel crit" id="dash-rem-panel"><div class="ph"><div class="pt crit">⚠ СРОЧНЫЕ НАПОМИНАНИЯ</div></div><div class="pb" id="dash-reminders"></div></div>
+    </div>
+    <!-- INVESTMENTS -->
+    <div id="s-invest" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ПОЗИЦИЮ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Наименование</label><input type="text" id="i-name" placeholder="Apple Inc."></div><div class="f"><label>Тикер</label><input type="text" id="i-ticker" placeholder="AAPL"></div><div class="f"><label>Дата покупки</label><input type="date" id="i-date"></div></div>
+        <div class="form-row c4"><div class="f"><label>Количество</label><input type="number" id="i-qty" step="any"></div><div class="f"><label>Цена покупки</label><input type="number" id="i-price" step="any"></div><div class="f"><label>Текущая цена</label><input type="number" id="i-cur" step="any"></div><div class="f"><label>Валюта</label><select id="i-currency"><option>USD</option><option>KZT</option><option>RUB</option><option>EUR</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Заметки</label><input type="text" id="i-notes"></div><div class="f"><label>Тип приобретения</label><select id="i-source"><option value="purchased">Куплено</option><option value="cashback">Кэшбэк / Награда</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addInvest()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">ОБНОВИТЬ ТЕКУЩУЮ ЦЕНУ</div></div><div class="pb">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="f" style="min-width:150px;"><label>Тикер</label><select id="i-upd-t"></select></div>
+          <div class="f" style="min-width:140px;"><label>Новая цена</label><input type="number" id="i-upd-p" step="any"></div>
+          <button class="btn" onclick="updateInvestPrice()">ОБНОВИТЬ</button>
+        </div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ПОРТФЕЛЬ</div><div style="display:flex;gap:8px;"><button class="btn sm edit" id="inv-view-btn" onclick="toggleInvView()">▼ ГРУППИРОВАТЬ</button></div></div><div class="pb">
+        <div id="invest-grouped" style="display:none;margin-bottom:10px;"></div>
+          <div id="invest-flat"><div class="tbl-w"><table><thead><tr><th>НАИМЕНОВАНИЕ</th><th>ТИКЕР</th><th>ДАТА</th><th class="r">КОЛ-ВО</th><th class="r">ЦЕНА ПОКУПКИ</th><th class="r">ВЛОЖЕНО</th><th class="r">ТЕК. ЦЕНА</th><th class="r">ТЕК. СТОИМ.</th><th class="r">П/У</th><th class="r">П/У%</th><th class="r">ДОЛЯ%</th><th>ВАЛЮТА</th><th>ЗАМЕТКИ</th><th>ДЕЙСТВИЯ</th></tr></thead>
+        <tbody id="invest-tbody"><tr><td colspan="14" class="empty">Портфель пуст</td></tr></tbody></table></div></div>
+      </div></div>
+      <div id="reward-panel" style="display:none;margin-bottom:16px;"><div class="panel imp"><div class="ph"><div class="pt imp">КЭШБЭК / НАГРАДНЫЕ АКТИВЫ</div></div><div class="pb"><div id="reward-summary"></div></div></div></div>
+      <div class="two-c">
+        <div class="panel imp"><div class="ph"><div class="pt imp">РАСПРЕДЕЛЕНИЕ ПО СТОИМОСТИ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-pie-val"></canvas></div><div id="l-pie-val" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">РАСПРЕДЕЛЕНИЕ ПО КОЛИЧЕСТВУ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-pie-qty"></canvas></div><div id="l-pie-qty" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;font-size:10px;font-family:var(--mono);color:var(--text2);"></div></div></div>
+      </div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДИНАМИКА ПОРТФЕЛЯ</div></div><div class="pb"><div style="position:relative;height:140px;"><canvas id="c-line"></canvas></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">ДИВИДЕНДЫ ПО ГОДАМ</div></div><div class="pb"><div style="position:relative;height:140px;"><canvas id="c-div"></canvas></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">ДИВИДЕНДЫ</div></div><div class="pb">
+        <div class="form-row c3" style="margin-bottom:10px;">
+          <div class="f"><label>Тикер</label><select id="d-t"></select></div>
+          <div class="f"><label>Дата выплаты</label><input type="date" id="d-date"></div>
+          <div class="f"><label>Дивиденд на акцию</label><input type="text" id="d-amt" inputmode="decimal"></div>
+        </div>
+        <div class="form-row c3" style="margin-bottom:10px;">
+          <div class="f"><label>Eligible акций (до экс-даты)</label><input type="text" id="d-eligible" inputmode="decimal"></div>
+          <div class="f"><label>Ручная сумма (от брокера)</label><input type="text" id="d-override" inputmode="decimal" placeholder="Необязательно"></div>
+          <div class="f"><div style="font-size:10px;font-family:var(--mono);color:var(--text3);padding-top:20px;">Ручная сумма приоритетнее расчётной</div></div>
+        </div>
+        <button class="btn" onclick="addDiv()" style="margin-bottom:16px;">+ ДОБАВИТЬ ДИВИДЕНД</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div><div class="sec-t">ИСТОРИЯ</div><div class="tbl-w"><table><thead><tr><th>ТИКЕР</th><th>ДАТА</th><th class="r">НА АКЦИЮ</th><th class="r">КОЛ-ВО</th><th class="r">ИТОГО</th><th></th></tr></thead><tbody id="div-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div></div>
+          <div><div class="sec-t">ПО ТИКЕРАМ</div><div class="tbl-w"><table><thead><tr><th>ТИКЕР</th><th class="r">ИТОГО</th></tr></thead><tbody id="div-sum-tbody"><tr><td colspan="2" class="empty">—</td></tr></tbody></table></div></div>
+        </div>
+      </div></div>
+    </div>
+    <!-- DEPOSITS -->
+    <div id="s-deposits" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ДЕПОЗИТ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Банк</label><input type="text" id="dep-bank" placeholder="АО «Отбасы банк»"></div><div class="f"><label>Тип</label><select id="dep-type" onchange="toggleOtbasy()"><option value="fixed">Срочный</option><option value="saving">Накопительный</option><option value="otbasy">Жилищно-накопительный</option></select></div><div class="f"><label>Сумма</label><input type="number" id="dep-sum" step="any"></div></div>
+        <div class="form-row c3"><div class="f"><label>Ставка % годовых</label><input type="number" id="dep-rate" step="any"></div><div class="f"><label>Дата открытия</label><input type="date" id="dep-start"></div><div class="f"><label>Дата окончания</label><input type="date" id="dep-end"></div></div>
+        <div class="form-row c2"><div class="f"><label>Валюта</label><select id="dep-cur"><option>KZT</option><option>USD</option><option>EUR</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addDeposit()">+ ДОБАВИТЬ</button></div></div>
+        <div class="form-row c3" id="otbasy-wrap" style="display:none;background:var(--imp-bg);padding:10px;border:1px solid var(--imp-bdr);">
+          <div class="f"><label>Гос. премия % (годовых)</label><input type="number" id="dep-gov-rate" value="20" step="any"></div>
+          <div class="f"><label>Лимит премии (доля, напр. 0.10)</label><input type="number" id="dep-gov-limit" value="0.10" step="0.01"></div>
+          <div class="f"><label>Дата начисления премии</label><input type="date" id="dep-bonus-date"></div>
+        </div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">МОИ ДЕПОЗИТЫ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>БАНК</th><th>ТИП</th><th>ВАЛЮТА</th><th class="r">СУММА</th><th class="r">СТАВКА</th><th>СРОК</th><th class="r">ДОХОД ЗА ПЕРИОД</th><th class="r">ДОХОД / МЕС</th><th class="r" style="color:var(--cyan);">ГОС. ПРЕМИЯ</th><th class="r">ДНЕЙ ОСТАЛОСЬ</th><th>ОБНОВЛЕНО</th><th>ДЕЙСТВИЯ</th></tr></thead>
+        <tbody id="dep-tbody"><tr><td colspan="12" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+
+    <!-- ASSETS -->
+    <div id="s-assets" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ АКТИВ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Название</label><input type="text" id="ast-name" placeholder="Квартира, ул. Абая 10"></div><div class="f"><label>Тип актива</label><select id="ast-type"><option>Недвижимость</option><option>Автомобиль</option><option>Земля</option><option>Бизнес</option><option>Прочее</option></select></div><div class="f"><label>Категория</label><select id="ast-cat"><option value="income">Доходный</option><option value="base">Базовый</option></select></div></div>
+        <div class="form-row c3"><div class="f"><label>Цена покупки</label><input type="number" id="ast-buy" step="any"></div><div class="f"><label>Год покупки</label><input type="number" id="ast-year" placeholder="2020"></div><div class="f"><label>Валюта</label><select id="ast-cur2"><option>KZT</option><option>USD</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Статус</label><select id="ast-status"><option>Владею</option><option>Сдаю в аренду</option><option>Продаю</option><option>Продан</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addAsset()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОХОДНЫЕ АКТИВЫ</div></div><div class="pb"><div class="tbl-w"><table><thead><tr><th>НАЗВАНИЕ</th><th>ТИП</th><th class="r">КУПЛЕНО ЗА</th><th class="r">ПРОДАНО ЗА</th><th class="r">ПРИБЫЛЬ</th><th>ГОД</th><th>СТАТУС</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ast-inc-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div></div></div>
+      <div class="panel"><div class="ph"><div class="pt">БАЗОВЫЕ АКТИВЫ</div></div><div class="pb"><div class="tbl-w"><table><thead><tr><th>НАЗВАНИЕ</th><th>ТИП</th><th class="r">КУПЛЕНО ЗА</th><th class="r">ПРОДАНО ЗА</th><th class="r">ПРИБЫЛЬ</th><th>ГОД</th><th>СТАТУС</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ast-base-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div></div></div>
+    </div>
+    <!-- INCOME -->
+    <div id="s-income" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ДОХОД</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Тип</label><select id="inc-type"><option>Зарплата</option><option>ИП</option><option>Аренда</option><option>Дивиденды</option><option>Прочее</option></select></div><div class="f"><label>Сумма</label><input type="number" id="inc-sum" step="any"></div><div class="f"><label>Дата</label><input type="date" id="inc-date"></div><div class="f"><label>Валюта</label><select id="inc-cur"><option>KZT</option><option>USD</option><option>RUB</option></select></div></div>
+        <div class="form-row c3">
+          <div class="f"><label>Описание</label><input type="text" id="inc-desc" placeholder="Зарплата за май, аванс"></div>
+          <div class="f"><label>Направить на депозит (необязательно)</label><select id="inc-dep-link"><option value="">— не направлять —</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addIncome()">+ ДОБАВИТЬ</button></div>
+        </div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">ИСТОРИЯ ДОХОДОВ</div></div><div class="pb">
+        <div class="sort-tabs"><button class="st active" onclick="sortIncome('date',this)">ПО ДАТЕ</button><button class="st" onclick="sortIncome('type',this)">ПО ТИПУ</button><button class="st" onclick="sortIncome('amount',this)">ПО СУММЕ</button><button class="st" onclick="sortIncome('month',this)">ПО МЕСЯЦУ</button></div>
+        <div class="tbl-w"><table><thead><tr><th>ТИП</th><th>ОПИСАНИЕ</th><th class="r">СУММА</th><th>ДАТА</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="inc-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- EXPENSES -->
+    <div id="s-expenses" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ РАСХОД</div></div><div class="pb">
+        <div class="form-row c4">
+          <div class="f"><label>Категория</label><select id="exp-cat" onchange="updateSubcat()"><option>Продукты</option><option>Коммунальные</option><option value="Личный транспорт">Личный транспорт</option><option>Рестораны</option><option>Одежда</option><option>Здоровье</option><option>Образование</option><option>Развлечения</option><option>Дети</option><option>Путешествия</option><option>Связь</option><option>Разное</option></select></div>
+          <div class="f" id="subcat-wrap" style="display:none;"><label>Подкатегория</label><select id="exp-subcat"><option>Бензин</option><option>Мойка</option><option>Техобслуживание</option><option>Запчасти</option><option>Штрафы</option><option>Парковка</option><option>Прочее</option></select></div>
+          <div class="f"><label>Сумма</label><input type="number" id="exp-sum" step="any"></div>
+          <div class="f"><label>Дата</label><input type="date" id="exp-date"></div>
+          <div class="f"><label>Валюта</label><select id="exp-cur"><option>KZT</option><option>USD</option></select></div>
+        </div>
+        <div class="form-row c2"><div class="f"><label>Описание</label><input type="text" id="exp-desc"></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addExpense()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel crit"><div class="ph"><div class="pt crit">⚠ АНОМАЛИИ В РАСХОДАХ</div></div><div class="pb" id="anom-body"><div class="empty">Недостаточно данных</div></div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">АНАЛИЗ: МЕСЯЦ К МЕСЯЦУ</div></div><div class="pb" id="mtm-body"><div class="empty">—</div></div></div>
+      <div class="two-c">
+        <div class="panel"><div class="ph"><div class="pt">ПО КАТЕГОРИЯМ (этот месяц)</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-exp-pie"></canvas></div></div></div>
+        <div class="panel"><div class="ph"><div class="pt">РАСХОДЫ ПО МЕСЯЦАМ</div></div><div class="pb"><div style="position:relative;height:200px;"><canvas id="c-exp-bar"></canvas></div></div></div>
+      </div>
+      <div class="panel"><div class="ph"><div class="pt">ИСТОРИЯ РАСХОДОВ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>КАТЕГОРИЯ</th><th>ПОДКАТЕГОРИЯ</th><th>ОПИСАНИЕ</th><th class="r">СУММА</th><th>ДАТА</th><th>ВАЛЮТА</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="exp-tbody"><tr><td colspan="7" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- RENT -->
+    <div id="s-rent" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ОБЪЕКТ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Адрес</label><input type="text" id="rent-addr"></div><div class="f"><label>Арендатор</label><input type="text" id="rent-tenant"></div><div class="f"><label>Аренда / месяц</label><input type="number" id="rent-sum" step="any"></div></div>
+        <div class="form-row c3"><div class="f"><label>Дата начала</label><input type="date" id="rent-start"></div><div class="f"><label>Дата окончания</label><input type="date" id="rent-end"></div><div class="f"><label>Валюта</label><select id="rent-cur"><option>KZT</option><option>USD</option></select></div>
+          <div class="f"><label>Объект недвижимости</label><select id="rent-prop-link"><option value="">— без привязки —</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addRent()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel imp"><div class="ph"><div class="pt imp">МОИ ОБЪЕКТЫ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>АДРЕС</th><th>АРЕНДАТОР</th><th class="r">АРЕНДА/МЕС</th><th>НАЧАЛО</th><th>ОКОНЧАНИЕ</th><th class="r">ОСТАЛОСЬ ДНЕЙ</th><th>ВАЛЮТА</th><th>ОБЪЕКТ</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="rent-tbody"><tr><td colspan="8" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- GOALS -->
+    <div id="s-goals" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ЦЕЛЬ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Название</label><input type="text" id="goal-name" placeholder="Купить квартиру"></div><div class="f"><label>Целевая сумма</label><input type="number" id="goal-target" step="any"></div><div class="f"><label>Накоплено</label><input type="number" id="goal-saved" step="any"></div><div class="f"><label>Дата цели</label><input type="date" id="goal-date"></div></div>
+        <div class="form-row c4"><div class="f"><label>Валюта</label><select id="goal-cur"><option>KZT</option><option>USD</option></select></div><div class="f"><label>Ежемес. взнос</label><input type="number" id="goal-mc" step="any" placeholder="50000"></div><div class="f"><label>Привязать к депозиту</label><select id="goal-dep"><option value="">— без привязки —</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addGoal()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div id="goals-list"></div>
+    </div>
+    <!-- ENPF -->
+    <div id="s-enpf" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ЕНПФ — ПЕНСИОННЫЕ НАКОПЛЕНИЯ</div></div><div class="pb">
+        <div class="enp-g">
+          <div>
+            <div class="form-row c2"><div class="f"><label>Текущий остаток (тг)</label><input type="number" id="enpf-bal" step="any"></div><div class="f"><label>Порог снятия (тг)</label><input type="number" id="enpf-thr" step="any"></div></div>
+            <div class="form-row c2"><div class="f"><label>Дата обновления</label><input type="date" id="enpf-date"></div><div class="f"><label>Примечание</label><input type="text" id="enpf-note"></div></div>
+            <button class="btn" onclick="saveEnpf()">СОХРАНИТЬ</button>
+          </div>
+          <div id="enpf-stats"></div>
+        </div>
+        <div style="margin-top:20px;"><div class="sec-t">ИСТОРИЯ</div>
+          <div class="tbl-w"><table><thead><tr><th>ДАТА</th><th class="r">ОСТАТОК</th><th class="r">ПОРОГ</th><th class="r">ДО ПОРОГА</th><th>ПРИМЕЧАНИЕ</th><th></th></tr></thead><tbody id="enpf-tbody"><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+        </div>
+      </div></div>
+    </div>
+    <!-- INSURANCE -->
+    <div id="s-insurance" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ СТРАХОВКУ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Тип страховки</label><select id="ins-type" onchange="toggleInsObj()"><option>КАСКО</option><option>ОГПО</option><option>Имущество</option><option>Жизнь</option><option>Здоровье</option><option>Другое</option></select></div>
+          <div class="f"><label>Страховая компания</label><input type="text" id="ins-comp" placeholder="Nomad Insurance"></div>
+          <div class="f"><label>Привязать к автомобилю</label><select id="ins-car-link"><option value="">— не авто —</option></select></div>
+        </div>
+        <div class="form-row c3">
+          <div class="f"><label>Объект (если не авто)</label><input type="text" id="ins-obj" placeholder="Квартира ул. Абая 10"></div>
+          <div class="f"><label>Сумма покрытия</label><input type="number" id="ins-cover" step="any"></div>
+          <div class="f"><label>Стоимость страховки</label><input type="number" id="ins-prem" step="any"></div>
+        </div>
+        <div class="form-row c2">
+          <div class="f"><label>Дата начала</label><input type="date" id="ins-start"></div>
+          <div class="f"><label>Дата окончания</label><input type="date" id="ins-end"></div>
+        </div>
+        <button class="btn" onclick="addInsurance()">+ ДОБАВИТЬ</button>
+      </div></div>
+      <div class="panel" id="ins-tbl-panel"><div class="ph"><div class="pt">МОИ СТРАХОВКИ</div></div><div class="pb">
+        <div class="tbl-w"><table><thead><tr><th>ОБЪЕКТ</th><th>ТИП</th><th>КОМПАНИЯ</th><th>НАЧАЛО</th><th>ОКОНЧАНИЕ</th><th class="r">ПОКРЫТИЕ</th><th class="r">СТОИМОСТЬ</th><th>СТАТУС</th><th>ДЕЙСТВИЯ</th></tr></thead><tbody id="ins-tbody"><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div>
+      </div></div>
+    </div>
+    <!-- SUBS -->
+    <div id="s-subs" class="section">
+      <div class="panel"><div class="ph"><div class="pt">ДОБАВИТЬ ПОДПИСКУ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Название</label><input type="text" id="sub-name" placeholder="Netflix"></div><div class="f"><label>Сумма/мес</label><input type="number" id="sub-sum" step="any"></div><div class="f"><label>День списания</label><input type="number" id="sub-day" min="1" max="31"></div><div class="f"><label>Валюта</label><select id="sub-cur"><option>KZT</option><option>USD</option></select></div></div>
+        <div class="form-row c2"><div class="f"><label>Категория</label><select id="sub-cat"><option>Развлечения</option><option>Связь</option><option>Работа</option><option>Здоровье</option><option>Другое</option></select></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addSub()">+ ДОБАВИТЬ</button></div></div>
+      </div></div>
+      <div class="panel"><div class="ph"><div class="pt">МОИ ПОДПИСКИ</div></div><div class="pb"><div id="sub-list"><div class="empty">—</div></div><div id="sub-total" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-family:var(--mono);font-size:12px;color:var(--text2);"></div></div></div>
+    </div>
+    <!-- PROPERTY -->
+    <div id="s-property" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОБАВИТЬ ОБЪЕКТ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Название / адрес</label><input type="text" id="prop-name" placeholder="Квартира, ул. Абая 10"></div>
+          <div class="f"><label>Тип</label><select id="prop-type"><option>Квартира</option><option>Дом</option><option>Земля</option><option>Коммерческий</option><option>Другое</option></select></div>
+          <div class="f"><label>Статус</label><select id="prop-status"><option>Проживаю</option><option>Сдаю в аренду</option><option>Пустует</option><option>Продаётся</option></select></div>
+        </div>
+        <div class="form-row c3">
+          <div class="f"><label>Площадь (кв.м)</label><input type="number" id="prop-area" step="any"></div>
+          <div class="f"><label>Стоимость (тг)</label><input type="number" id="prop-value" step="any"></div>
+          <div class="f"><label>Год покупки</label><input type="number" id="prop-year" placeholder="2020"></div>
+        </div>
+        <div class="form-row c2">
+          <div class="f"><label>Заметки</label><input type="text" id="prop-notes"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addProperty()">+ ДОБАВИТЬ ОБЪЕКТ</button></div>
+        </div>
+      </div></div>
+
+      <div id="property-list"></div>
+
+      <!-- ADD UTILITY EXPENSE -->
+      <div class="panel" id="add-util-panel" style="display:none;">
+        <div class="ph"><div class="pt" id="add-util-title">ДОБАВИТЬ РАСХОД ПО ОБЪЕКТУ</div></div>
+        <div class="pb">
+          <div class="form-row c4">
+            <div class="f"><label>Категория</label><select id="util-cat">
+              <option>Коммунальные</option><option>Электричество</option><option>Вода</option>
+              <option>Газ</option><option>Интернет</option><option>Ремонт</option>
+              <option>Налог</option><option>Управление домом</option><option>Прочее</option>
+            </select></div>
+            <div class="f"><label>Сумма (тг)</label><input type="number" id="util-sum" step="any"></div>
+            <div class="f"><label>Дата</label><input type="date" id="util-date"></div>
+            <div class="f"><label>Период (месяц)</label><input type="month" id="util-period"></div>
+          </div>
+          <div class="form-row c2">
+            <div class="f"><label>Описание</label><input type="text" id="util-desc" placeholder="Квитанция за январь"></div>
+            <div style="display:flex;align-items:flex-end;gap:10px;">
+              <button class="btn" onclick="addUtility()">+ ДОБАВИТЬ</button>
+              <button class="btn edit" onclick="closeAddUtil()">ОТМЕНА</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- GARAGE -->
+    <div id="s-garage" class="section">
+      <div class="panel imp"><div class="ph"><div class="pt imp">ДОБАВИТЬ АВТОМОБИЛЬ</div></div><div class="pb">
+        <div class="form-row c4"><div class="f"><label>Марка</label><input type="text" id="car-make" placeholder="Toyota"></div><div class="f"><label>Модель</label><input type="text" id="car-model" placeholder="Camry"></div><div class="f"><label>Год</label><input type="number" id="car-year" placeholder="2020"></div><div class="f"><label>Пробег (км)</label><input type="number" id="car-mileage" step="any"></div></div>
+        <div class="form-row c2"><div class="f"><label>Гос. номер</label><input type="text" id="car-plate" placeholder="123 ABC 01"></div><div style="display:flex;align-items:flex-end;"><button class="btn" onclick="addCar()">+ ДОБАВИТЬ АВТО</button></div></div>
+      </div></div>
+      <div id="garage-list"></div>
+      <div class="panel" id="add-part-panel" style="display:none;"><div class="ph"><div class="pt" id="add-part-title">ДОБАВИТЬ ЗАПИСЬ</div></div><div class="pb">
+        <div class="form-row c3"><div class="f"><label>Название работы / запчасти</label><input type="text" id="part-name" placeholder="Замена масла"></div><div class="f"><label>Номер запчасти</label><input type="text" id="part-number" placeholder="4351220130"></div><div class="f"><label>Категория</label><select id="part-cat"><option>Масло и фильтры</option><option>Тормозная система</option><option>Подвеска</option><option>Двигатель</option><option>Трансмиссия</option><option>Кузов</option><option>Электрика</option><option>Шины</option><option>ТО</option><option>Налог на транспорт</option><option>Прочее</option></select></div></div>
+        <div class="form-row c4"><div class="f"><label>Цена (тг)</label><input type="number" id="part-price" step="any"></div><div class="f"><label>Дата</label><input type="date" id="part-date"></div><div class="f"><label>Пробег при замене</label><input type="number" id="part-mileage" step="any"></div><div class="f"><label>Следующая замена (км)</label><input type="number" id="part-next-mil" step="any"></div></div>
+        <div class="form-row c2"><div class="f"><label>Где меняли</label><input type="text" id="part-where" placeholder="СТО Мастер / сам"></div><div class="f"><label>Следующая замена (дата)</label><input type="date" id="part-next-date"></div></div>
+        <div style="display:flex;gap:10px;"><button class="btn" onclick="addPart()">+ ДОБАВИТЬ ЗАПИСЬ</button><button class="btn edit" onclick="closeAddPart()">ОТМЕНА</button></div>
+      </div></div>
+    <!-- STO DIRECTORY -->
+    <div class="panel" id="sto-panel">
+      <div class="ph" style="cursor:pointer;" onclick="toggleStoPanel()">
+        <div class="pt">📋 СПРАВОЧНИК СТО</div>
+        <span id="sto-panel-icon" style="font-family:var(--mono);color:var(--text3);">▼ РАЗВЕРНУТЬ</span>
+      </div>
+      <div id="sto-panel-body" style="display:none;">
+        <div class="pb" style="border-top:1px solid var(--border);">
+          <div class="form-row c3" style="margin-bottom:10px;">
+            <div class="f"><label>Название СТО</label><input type="text" id="sto-name" placeholder="СТО Мастер"></div>
+            <div class="f"><label>Адрес</label><input type="text" id="sto-addr" placeholder="ул. Абая 15"></div>
+            <div class="f"><label>Телефон</label><input type="text" id="sto-phone" placeholder="+7 777 123 45 67"></div>
+          </div>
+          <div class="form-row c2" style="margin-bottom:10px;">
+            <div class="f"><label>Специализация</label><select id="sto-spec"><option>Общее ТО</option><option>Кузовной ремонт</option><option>Двигатель</option><option>Подвеска</option><option>Шины</option><option>Электрика</option><option>Другое</option></select></div>
+            <div class="f"><label>Заметки</label><input type="text" id="sto-notes" placeholder="Хороший мастер, цены нормальные..."></div>
+          </div>
+          <button class="btn" onclick="addSto()" style="margin-bottom:16px;">+ ДОБАВИТЬ СТО</button>
+          <div id="sto-list"><div class="empty">СТО не добавлены</div></div>
+        </div>
+      </div>
+    </div>
+    <!-- ADD SERVICE PANEL -->
+      <div class="panel imp" id="add-svc-panel" style="display:none;"><div class="ph"><div class="pt imp" id="add-svc-title">ДОБАВИТЬ РАБОТУ</div></div><div class="pb">
+        <div class="form-row c3">
+          <div class="f"><label>Описание работы</label><input type="text" id="svc-desc" placeholder="Замена масла, Диагностика..."></div>
+          <div class="f"><label>Стоимость работы (тг)</label><input type="number" id="svc-labor" step="any" placeholder="5000"></div>
+          <div class="f"><label>Дата</label><input type="date" id="svc-date"></div>
+        </div>
+        <div class="form-row c4">
+          <div class="f"><label>Пробег (км)</label><input type="text" id="svc-mileage" inputmode="decimal"></div>
+          <div class="f"><label>СТО из справочника</label><select id="svc-where-sel" onchange="applyStoSvc()"><option value="">— выбрать СТО —</option></select></div>
+          <div class="f"><label>Или вручную</label><input type="text" id="svc-where" placeholder="СТО Мастер / сам"></div>
+          <div class="f"><label>Связанная запчасть</label><select id="svc-part"><option value="">— без запчасти —</option></select></div>
+        </div>
+        <div style="margin-bottom:10px;"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--mono);font-size:11px;"><input type="checkbox" id="svc-diy"> <span style="color:var(--green);">DIY — сделал сам (работа бесплатна)</span></label></div>
+        <div style="display:flex;gap:10px;"><button class="btn" onclick="addService()">+ ДОБАВИТЬ РАБОТУ</button><button class="btn edit" onclick="closeAddSvc()">ОТМЕНА</button></div>
+      </div></div>
+    <!-- ACCOUNTS & TRANSFERS -->
+    <div id="s-accounts" class="section">
+      <style>
+        #s-accounts .acc-card{background:#151e2d;border:1px solid rgba(251,188,4,0.12);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+        #s-accounts .acc-card-name{font-size:13px;font-weight:500;color:#eef0f4;}
+        #s-accounts .acc-card-type{font-size:10px;color:#8a9ab5;font-family:monospace;}
+        #s-accounts .acc-card-bal{font-family:monospace;font-size:14px;color:#00c896;}
+        #s-accounts .acc-section-label{font-size:10px;font-family:monospace;color:#4a5568;margin:10px 0 6px;letter-spacing:1px;}
+        #acc-list-wrap{min-height:60px;}
+      </style>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="background:#101720;border:1px solid rgba(59,140,248,0.3);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#3b8cf8;letter-spacing:1.5px;">ДОБАВИТЬ СЧЁТ</span></div>
+          <div style="padding:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">НАЗВАНИЕ</label><input type="text" id="acc-name" placeholder="Kaspi Gold..." style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ТИП</label><select id="acc-type" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option>Карта</option><option>Наличные</option><option>Текущий счёт</option><option>Другое</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">БАЛАНС</label><input type="text" id="acc-balance" placeholder="0" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ВАЛЮТА</label><select id="acc-cur" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option>KZT</option><option>USD</option><option>EUR</option></select></div>
+            </div>
+            <button onclick="addAccount()" style="background:#fbb804;color:#000;font-family:monospace;font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;">+ ДОБАВИТЬ СЧЁТ</button>
+          </div>
+        </div>
+        <div style="background:#101720;border:1px solid rgba(251,188,4,0.12);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#fbb804;letter-spacing:1.5px;">МОИ СЧЕТА</span></div>
+          <div style="padding:14px;min-height:80px;">
+            <div id="accounts-list"><div style="text-align:center;padding:28px;color:#4a5568;font-size:11px;">Счета не добавлены</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#101720;border:1px solid rgba(59,140,248,0.3);margin-bottom:16px;">
+        <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#3b8cf8;letter-spacing:1.5px;">ПЕРЕВОД МЕЖДУ СЧЕТАМИ</span></div>
+        <div style="padding:14px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ОТКУДА</label><select id="tr-from" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option value="">— выберите —</option></select></div>
+            <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">КУДА</label><select id="tr-to" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option value="">— выберите —</option></select></div>
+            <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">СУММА</label><input type="text" id="tr-sum" placeholder="0" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА</label><input type="date" id="tr-date" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">КОММЕНТАРИЙ</label><input type="text" id="tr-note" placeholder="Пополнение депозита..." style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+          </div>
+          <button onclick="addTransfer()" style="background:#fbb804;color:#000;font-family:monospace;font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;">→ ПЕРЕВЕСТИ</button>
+        </div>
+      </div>
+      <div style="background:#101720;border:1px solid rgba(251,188,4,0.12);">
+        <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#fbb804;letter-spacing:1.5px;">ИСТОРИЯ ПЕРЕВОДОВ</span></div>
+        <div style="padding:14px;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;">
+            <thead><tr style="background:#1a2438;border-bottom:1px solid rgba(251,188,4,0.25);"><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ДАТА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ОТКУДА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">КУДА</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">СУММА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">КОММЕНТАРИЙ</th><th></th></tr></thead>
+            <tbody id="transfers-tbody"><tr><td colspan="6" style="text-align:center;padding:28px;color:#4a5568;font-size:11px;">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- DEBTS -->
+    <div id="s-debts" class="section">
+      <div style="display:flex;border-bottom:1px solid rgba(251,188,4,0.12);margin-bottom:16px;">
+        <button id="dtab-bank" onclick="showDebtTab('bank',this)" style="padding:10px 18px;font-size:11px;font-family:monospace;color:#fbb804;cursor:pointer;border:none;border-bottom:2px solid #fbb804;background:none;letter-spacing:.5px;">БАНКОВСКИЕ КРЕДИТЫ</button>
+        <button id="dtab-private" onclick="showDebtTab('private',this)" style="padding:10px 18px;font-size:11px;font-family:monospace;color:#4a5568;cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;letter-spacing:.5px;">Я ДОЛЖЕН</button>
+        <button id="dtab-ioweme" onclick="showDebtTab('ioweme',this)" style="padding:10px 18px;font-size:11px;font-family:monospace;color:#4a5568;cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;letter-spacing:.5px;">МНЕ ДОЛЖНЫ</button>
+      </div>
+
+      <div id="dpane-bank" style="display:block;">
+        <div style="background:#101720;border:1px solid rgba(251,188,4,0.12);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#fbb804;letter-spacing:1.5px;">ДОБАВИТЬ КРЕДИТ</span></div>
+          <div style="padding:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">БАНК</label><input type="text" id="cr-bank" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ТИП</label><select id="cr-type" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option>Ипотека</option><option>Потребительский</option><option>Автокредит</option><option>Бизнес</option><option>Другое</option></select></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">НАЧАЛЬНАЯ СУММА</label><input type="text" id="cr-total" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ОСТАТОК ДОЛГА</label><input type="text" id="cr-rest" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ЕЖ. ПЛАТЁЖ</label><input type="text" id="cr-pay" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">СТАВКА %</label><input type="text" id="cr-rate" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА ЗАКРЫТИЯ</label><input type="date" id="cr-end" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;align-items:flex-end;"><button onclick="addCredit()" style="background:#fbb804;color:#000;font-family:monospace;font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;">+ ДОБАВИТЬ</button></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#101720;border:1px solid rgba(240,82,82,0.3);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#f05252;letter-spacing:1.5px;">МОИ КРЕДИТЫ</span></div>
+          <div style="padding:14px;overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;">
+              <thead><tr style="background:#1a2438;"><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">БАНК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ТИП</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">НАЧАЛЬНАЯ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ОСТАТОК</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ПЛАТЁЖ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">СТАВКА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ЗАКРЫТИЕ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ПОГАШЕНО</th><th></th></tr></thead>
+              <tbody id="cr-tbody"><tr><td colspan="9" style="text-align:center;padding:28px;color:#4a5568;font-size:11px;">—</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="dpane-private" style="display:none;">
+        <div style="background:#101720;border:1px solid rgba(251,188,4,0.12);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#fbb804;letter-spacing:1.5px;">ДОБАВИТЬ ДОЛГ (Я ДОЛЖЕН)</span></div>
+          <div style="padding:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">КРЕДИТОР</label><input type="text" id="pd-name" placeholder="Иван Иванов" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">КОНТАКТ</label><input type="text" id="pd-contact" placeholder="Телефон..." style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">СУММА</label><input type="text" id="pd-sum" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА ЗАЙМА</label><input type="date" id="pd-date" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА ВОЗВРАТА</label><input type="date" id="pd-due" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ТИП УСЛОВИЙ</label><select id="pd-rate-type" onchange="togglePdRate()" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"><option value="none">Без процентов</option><option value="percent">Ставка %</option><option value="fixed">Фикс. сумма возврата</option></select></div>
+            </div>
+            <div id="pd-rate-wrap" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label id="pd-rate-label" style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ЗНАЧЕНИЕ</label><input type="text" id="pd-rate-val" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">УСЛОВИЯ</label><input type="text" id="pd-terms" placeholder="10 мес по 50 000" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <button onclick="addPrivateDebt()" style="background:#fbb804;color:#000;font-family:monospace;font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;">+ ДОБАВИТЬ ДОЛГ</button>
+          </div>
+        </div>
+        <div style="background:#101720;border:1px solid rgba(240,82,82,0.3);">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#f05252;letter-spacing:1.5px;">Я ДОЛЖЕН</span></div>
+          <div style="padding:14px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;"><thead><tr style="background:#1a2438;"><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">КРЕДИТОР</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">КОНТАКТ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">СУММА</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">К ВОЗВРАТУ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ОСТАТОК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ДАТА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">СРОК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">УСЛОВИЯ</th><th></th></tr></thead><tbody id="pd-tbody"><tr><td colspan="9" style="text-align:center;padding:28px;color:#4a5568;font-size:11px;">—</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="dpane-ioweme" style="display:none;">
+        <div style="background:#101720;border:1px solid rgba(251,188,4,0.12);margin-bottom:16px;">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#fbb804;letter-spacing:1.5px;">ДОБАВИТЬ (МНЕ ДОЛЖНЫ)</span></div>
+          <div style="padding:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДОЛЖНИК</label><input type="text" id="iom-name" placeholder="Пётр Петров" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">КОНТАКТ</label><input type="text" id="iom-contact" placeholder="Телефон..." style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">СУММА</label><input type="text" id="iom-sum" inputmode="decimal" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА ВЫДАЧИ</label><input type="date" id="iom-date" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ДАТА ВОЗВРАТА</label><input type="date" id="iom-due" style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:9px;font-family:monospace;color:#4a5568;letter-spacing:1px;">ЗАМЕТКА</label><input type="text" id="iom-note" placeholder="За что договорились..." style="background:#1a2438;border:1px solid rgba(251,188,4,0.25);color:#eef0f4;font-family:monospace;font-size:12px;padding:7px 10px;outline:none;width:100%;"></div>
+            </div>
+            <button onclick="addIOweMe()" style="background:#fbb804;color:#000;font-family:monospace;font-size:11px;font-weight:600;padding:8px 20px;border:none;cursor:pointer;">+ ДОБАВИТЬ</button>
+          </div>
+        </div>
+        <div style="background:#101720;border:1px solid rgba(59,140,248,0.3);">
+          <div style="padding:10px 14px;border-bottom:1px solid rgba(251,188,4,0.12);"><span style="font-size:10px;font-family:monospace;color:#3b8cf8;letter-spacing:1.5px;">МНЕ ДОЛЖНЫ</span></div>
+          <div style="padding:14px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;"><thead><tr style="background:#1a2438;"><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ДОЛЖНИК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">КОНТАКТ</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">СУММА</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ВОЗВРАЩЕНО</th><th style="padding:8px 10px;text-align:right;color:#fbb804;font-size:10px;">ОСТАТОК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ДАТА</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">СРОК</th><th style="padding:8px 10px;text-align:left;color:#fbb804;font-size:10px;">ЗАМЕТКА</th><th></th></tr></thead><tbody id="iom-tbody"><tr><td colspan="9" style="text-align:center;padding:28px;color:#4a5568;font-size:11px;">—</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </div>
+    <!-- REMINDERS -->
+    <div id="s-reminders" class="section">
+      <div class="panel crit"><div class="ph"><div class="pt crit">ВСЕ НАПОМИНАНИЯ</div></div><div class="pb" id="all-reminders"></div></div>
+    </div>
+  </div>
+</div>
+<div id="modal" class="modal-ov" style="display:none;" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div class="modal-t" id="modal-title">РЕДАКТИРОВАНИЕ</div><div id="modal-body"></div><div class="modal-a"><button class="btn" id="modal-save-btn">СОХРАНИТЬ</button><button class="btn del sm" onclick="closeModal()">ОТМЕНА</button></div></div>
+</div>
+<!-- Global variables -->
+<script src="globals.js"></script>
+<!-- Utilities -->
+<script src="utils.js"></script>
+<!-- Storage & Migration -->
+<script src="storage.js"></script>
+<!-- Auth & Navigation -->
+<script src="auth.js"></script>
+<!-- Modules -->
+<script src="investments.js"></script>
+<script src="deposits.js"></script>
+<script src="credits.js"></script>
+<script src="assets.js"></script>
+<script src="income.js"></script>
+<script src="expenses.js"></script>
+<script src="rent.js"></script>
+<script src="goals.js"></script>
+<script src="enpf.js"></script>
+<script src="insurance.js"></script>
+<script src="subs.js"></script>
+<script src="garage.js"></script>
+<script src="property.js"></script>
+<script src="accounts.js"></script>
+<script src="debts.js"></script>
+<script src="reminders.js"></script>
+<script src="dashboard.js"></script>
+<script src="main.js"></script>
+<!-- Init -->
+<script src="init.js"></script>
+</body>
+</html>
